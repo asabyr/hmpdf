@@ -4,7 +4,7 @@
 
 //                               A       B      C
 static double
-def_Duffy08_conc_params[] = { 5.71, -0.087, -0.47,   // M200c
+def_Duffy08_conc_params[] = { 5.71, -0.084, -0.47,   // M200c
                               7.85, -0.081, -0.71,   // Mvir
                              10.14, -0.081, -1.01, 0.0, 0.0, 0.0};// M200m
 
