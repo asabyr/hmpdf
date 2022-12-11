@@ -19,6 +19,9 @@ ARCHIVE = libhmpdf.a
 SHARED = libhmpdf.so
 
 CFLAGS = --std=gnu99 -fPIC -Wall -Wextra -Wpedantic -Wno-variadic-macros -Winline -DHAVE_INLINE -DDEBUG -DARICO20
+#CFLAGS = --std=gnu99 -fPIC -Wall -Wextra -Wpedantic -Wno-variadic-macros -Winline -DHAVE_INLINE -DDEBUG -DARICO20 -DHMFSWAP
+#CFLAGS = --std=gnu99 -fPIC -Wall -Wextra -Wpedantic -Wno-variadic-macros -Winline -DHAVE_INLINE -DDEBUG -DARICO20 -DSAVE_PROF -DSAVE_HMF -DSAVE_SIGMA_NU
+
 OPTFLAGS = -O4 -ggdb3 -ffast-math
 OMPFLAGS = -fopenmp
 

@@ -588,6 +588,16 @@ create_profiles(hmpdf_obj *d)
             CONTINUE_IF_ERR
             SAFEHMPDF_NORETURN(fix_endpoints(d->p->Ntheta, d->p->decr_tgrid,
                                              d->p->profiles[z_index][M_index]+1));
+	    #ifdef SAVE_PROF
+            char buffer[512];
+            sprintf(buffer, "/moto/astro/users/as6131/tSZ_maps/hmpdf_maps/profiles/profile_%.8f_%.8f.bin", d->n->zgrid[z_index], d->n->Mgrid[M_index]);
+            FILE *fp = fopen(buffer, "w");
+	    double theta_max=d->p->profiles[z_index][M_index][0];
+	    fwrite(&theta_max, sizeof(double), 1, fp);
+	    fwrite(d->p->decr_tgrid,sizeof(double),d->p->Ntheta, fp);
+	    fwrite(d->p->profiles[z_index][M_index]+1, sizeof(double), d->p->Ntheta, fp);
+            fclose(fp);
+            #endif
 
             CONTINUE_IF_ERR
             // if requested, save corresponding profiles to file
