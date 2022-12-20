@@ -412,7 +412,23 @@ draw_N_halos(hmpdf_obj *d, int z_index, int M_index, map_ws *ws, unsigned *N)
 // draws the number of halos in the given bin
 {//{{{
     STARTFCT
+    
+    #ifdef HMFSWAP
+    printf("using hmf from class_sz");    
+    double hmf_class_sz[d->n->Nz * d->n->NM];
+    FILE *fp_swp = fopen("/moto/home/as6131/software/hmpdf/hmf_class_sz.bin", "rb");
+    fread(hmf_class_sz, sizeof(double), d->n->Nz * d->n->NM, fp_swp);
 
+    double n = hmf_class_sz[z_index*d->n->NM+M_index] // dn_3d / dlogM
+               *gsl_pow_2(d->c->comoving[z_index])
+               /d->c->hubble[z_index]
+               *d->n->zweights[z_index]
+               *d->n->Mweights[M_index]
+               *d->m->area;
+    FILE *fp_swp_out = fopen("hmf_swapped.txt", "a");
+    fprintf(fp_swp_out, "%.8f %.18e %.25e\n", d->n->zgrid[z_index], d->n->Mgrid[M_index],hmf_class_sz[z_index*d->n->NM+M_index]);
+    fclose(fp_swp_out);
+    #else
     // expected number of halos in this bin
     double n = d->h->hmf[z_index][M_index] // dn_3d / dlogM
                * gsl_pow_2(d->c->comoving[z_index])
@@ -420,7 +436,7 @@ draw_N_halos(hmpdf_obj *d, int z_index, int M_index, map_ws *ws, unsigned *N)
                * d->n->zweights[z_index]
                * d->n->Mweights[M_index]
                * d->m->area;
-
+    #endif
     if (d->m->mappoisson)
     {
         // use this funny construct because this function
@@ -575,7 +591,10 @@ loop_no_z_dependence(hmpdf_obj *d)
     STARTFCT
 
     HMPDFPRINT(3, "\t\tloop_no_z_dependence\n");
-
+    #ifdef HMFSWAP
+    FILE *fp_swp_out = fopen("hmf_swapped.txt", "w");
+    fclose(fp_swp_out);
+    #endif
     // reset the workspaces
     for (int ii=0; ii<d->m->Nws; ii++)
     {
