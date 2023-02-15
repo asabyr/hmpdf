@@ -323,8 +323,10 @@ dndlogM(hmpdf_obj *d, int z_index, int M_index, double *hmf, double *bias)
     {
         double sigma_squared = d->pwr->ssq[M_index][0];
         double sigma_squared_prime = d->pwr->ssq[M_index][1];
-        double nu = 1.686/sqrt(d->c->Dsq[z_index] * sigma_squared);
-
+        //double nu = 1.686/sqrt(d->c->Dsq[z_index] * sigma_squared);
+	double dc=3.0/20.0*pow(12.0*M_PI,2.0/3.0);
+        printf("using new dc\n");
+        double nu=dc/sqrt(sigma_squared);
         double fnu = fnu_Tinker10(d, nu, d->n->zgrid[z_index]);
 
         #ifdef SAVE_SIGMA_NU
