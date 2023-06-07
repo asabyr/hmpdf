@@ -14,7 +14,7 @@
 #define PKINTERP_KMAX 1e2
 #define PKINTERP_TYPE interp_cspline
 
-#define PKINTEGR_KMIN PKINTERP_KMIN
+#define PKINTEGR_KMIN 1e-4
 #define PKINTEGR_LIMIT 10000
 #define PKINTEGR_KEY 6
 #define PKINTEGR_EPSABS 0.0
