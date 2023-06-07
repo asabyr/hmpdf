@@ -9,10 +9,10 @@
 #  PATHTOFFTW = /usr/local/fftw/gcc/3.3.4
 #endif
 
-PATHTOGSL=/moto/opt/gsl/gsl-2.7.1
-PATHTOCLASS=/moto/home/as6131/software/class_public-3.2.0
+PATHTOGSL=/opt/apps/intel18/gsl/2.6
+PATHTOCLASS=/work2/07833/tg871330/stampede2/software/class_public-3.2.0
 #PATHTOFFTW=/moto/opt/fftw3/fftw-3.3.10
-PATHTOFFTW=/cm/shared/apps/fftw/openmpi/gcc/64/3.3.7
+PATHTOFFTW=/opt/apps/intel18/impi18_0/fftw3/3.3.8
 
 CC = gcc
 ARCHIVE = libhmpdf.a
