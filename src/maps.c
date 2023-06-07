@@ -922,7 +922,7 @@ create_sidelengths(hmpdf_obj *d)
     long temp = (long)round(max_t_out/d->f->pixelside);
     temp *= 2;
     temp += 4; // some safety buffer
-    d->m->buflen = 2 * temp * temp; // not sufficient to do all halos
+    d->m->buflen = temp * temp; // not sufficient to do all halos
                                     // in one go, but long enough that it
                                     // is reasonably efficient
 
