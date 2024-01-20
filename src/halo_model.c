@@ -325,12 +325,11 @@ dndlogM(hmpdf_obj *d, int z_index, int M_index, double *hmf, double *bias)
         double sigma_squared_prime = d->pwr->ssq[M_index][1];
         //double nu = 1.686/sqrt(d->c->Dsq[z_index] * sigma_squared);
 	double dc=3.0/20.0*pow(12.0*M_PI,2.0/3.0);
-        printf("using new dc\n");
         double nu=dc/sqrt(d->c->Dsq[z_index]*sigma_squared);
         double fnu = fnu_Tinker10(d, nu, d->n->zgrid[z_index]);
 
         #ifdef SAVE_SIGMA_NU
-	FILE *fp = fopen("/moto/astro/users/as6131/tSZ_maps/hmpdf_maps/sigma_nu/hmf_sigma_nu.txt", "a");
+	FILE *fp = fopen("/scratch/07833/tg871330/tSZ_maps/hmpdf_maps/sigma_nu/hmf_sigma_nu.txt", "a");
 	fprintf(fp, "%.8f %.18e %.18e %.18e\n",d->n->zgrid[z_index], d->n->Mgrid[M_index],sigma_squared*d->c->Dsq[z_index], nu);
 	fclose(fp);
 	#endif
@@ -371,7 +370,7 @@ create_dndlogM(hmpdf_obj *d)
     SETARRNULL(d->h->hmf, d->n->Nz);
 
     #ifdef SAVE_SIGMA_NU
-    FILE *fp = fopen("/moto/astro/users/as6131/tSZ_maps/hmpdf_maps/sigma_nu/hmf_sigma_nu.txt", "w");
+    FILE *fp = fopen("/scratch/07833/tg871330/tSZ_maps/hmpdf_maps/sigma_nu/hmf_sigma_nu.txt", "w");
     fclose(fp);
     #endif
 
@@ -388,7 +387,7 @@ create_dndlogM(hmpdf_obj *d)
 
 	#ifdef SAVE_HMF
 	char buffer[512];
-        sprintf(buffer, "/moto/astro/users/as6131/tSZ_maps/hmpdf_maps/hmf/hmf_%.8f.bin", d->n->zgrid[z_index]);
+        sprintf(buffer, "/scratch/07833/tg871330/tSZ_maps/hmpdf_maps/hmf/hmf_%.8f.bin", d->n->zgrid[z_index]);
         FILE *fp = fopen(buffer, "w");
 	fwrite(d->n->Mgrid, sizeof(double), d->n->NM, fp);
 	fwrite(d->h->hmf[z_index], sizeof(double), d->n->NM, fp);

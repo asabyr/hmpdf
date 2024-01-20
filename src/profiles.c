@@ -539,7 +539,6 @@ tot_profiles_to_file(hmpdf_obj *d, int z_index, int M_index, char *fname)
 
     double M200c, R200c, c200c;
     SAFEHMPDF(Mconv(d, z_index, M_index, hmpdf_mdef_c, mass_resc, &M200c, &R200c, &c200c));
-
     fprintf(fp, "# z=%.18e\n# M200m[Msun/h]=%.18e\n# R200c[Mpc]=%.18e\n\n",
                 d->n->zgrid[z_index], d->n->Mgrid[M_index]*d->c->h, R200c);
     fprintf(fp, "# r[Mpc], rho_nfw[Msun/Mpc^3]\n");
@@ -590,7 +589,7 @@ create_profiles(hmpdf_obj *d)
                                              d->p->profiles[z_index][M_index]+1));
 	    #ifdef SAVE_PROF
             char buffer[512];
-            sprintf(buffer, "/moto/astro/users/as6131/tSZ_maps/hmpdf_maps/profiles/profile_%.8f_%.8f.bin", d->n->zgrid[z_index], d->n->Mgrid[M_index]);
+            sprintf(buffer, "/scratch/07833/tg871330/tSZ_maps/hmpdf_maps/profiles/profile_%.8f_%.8f.bin", d->n->zgrid[z_index], d->n->Mgrid[M_index]);
             FILE *fp = fopen(buffer, "w");
 	    double theta_max=d->p->profiles[z_index][M_index][0];
 	    fwrite(&theta_max, sizeof(double), 1, fp);
