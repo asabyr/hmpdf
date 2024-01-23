@@ -290,7 +290,7 @@ fill_buf(hmpdf_obj *d, int z_index, int M_index, map_ws *ws)
     long w = (long)ceil(tout);
     ws->bufside = 2 * w + 1;
     long pixside = 2 * d->m->pxlgrid + 1;
-
+    //printf("pixgrid= %i\n",d->m->pxlgrid); 
     // draw random displacement of the center of the halo
     double dx = gsl_rng_uniform(ws->rng) - 0.5;
     double dy = gsl_rng_uniform(ws->rng) - 0.5;
@@ -380,7 +380,9 @@ add_buf(hmpdf_obj *d, map_ws *ws)
     // pick a random point in the map
     long x0 = gsl_rng_uniform_int(ws->rng, d->m->Nside);
     long y0 = gsl_rng_uniform_int(ws->rng, d->m->Nside);
-
+    printf("x0 %d\n",x0);
+    printf("y0 %d\n",y0);
+    exit(0);
     // add the pixel values from the buffer
     //     we 'unroll' the loops slightly for better efficiency
     //     with the periodic boundary conditions
@@ -436,7 +438,15 @@ draw_N_halos(hmpdf_obj *d, int z_index, int M_index, map_ws *ws, unsigned *N)
                * d->n->zweights[z_index]
                * d->n->Mweights[M_index]
                * d->m->area;
-    #endif
+    #endif 
+    #ifdef COUNT_HALOS
+    char n_halos_buffer[512];
+    sprintf(n_halos_buffer,"n_halos_Nz%d_NM%d.txt",d->n->Nz,d->n->NM);
+    FILE *file_nhalos=fopen(n_halos_buffer,"a");
+    fprintf(file_nhalos, "%.8f %.18e %.2f\n",d->n->zgrid[z_index], d->n->Mgrid[M_index],n);
+    fclose(file_nhalos);
+    #endif 
+
     if (d->m->mappoisson)
     {
         // use this funny construct because this function
@@ -594,6 +604,11 @@ loop_no_z_dependence(hmpdf_obj *d)
     #ifdef HMFSWAP
     FILE *fp_swp_out = fopen("hmf_swapped.txt", "w");
     fclose(fp_swp_out);
+    #endif
+    
+    #ifdef COUNT_HALOS
+    FILE *file_nhalos=fopen("n_halos.txt","w");
+    fclose(file_nhalos);
     #endif
     // reset the workspaces
     for (int ii=0; ii<d->m->Nws; ii++)

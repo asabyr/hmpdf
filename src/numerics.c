@@ -186,6 +186,23 @@ create_grids(hmpdf_obj *d)
     {
         d->n->Mgrid[ii] = exp(d->n->Mgrid[ii]);
     }
+    
+    #ifdef COUNT_HALOS
+    char buffer[512];
+    sprintf(buffer,"NM_%d.bin",d->n->NM);
+    FILE *NM_file=fopen(buffer, "w");
+    fwrite(d->n->Mgrid, sizeof(double), d->n->NM, NM_file);
+    fclose(NM_file);
+    #endif
+    
+    #ifdef HALO_PEAK_TEST
+    int NM=d->n->NM/2;
+    printf("entered doubling grid %d\n",NM);
+    char buffer_repeat[512];
+    sprintf(buffer_repeat,"/scratch/07833/tg871330/tSZ_maps/hmpdf_maps/num_convergence/halo_test/NM_%d_repeat.bin",NM);
+    FILE *grid_repeat=fopen(buffer_repeat,"rb");
+    fread(d->n->Mgrid, sizeof(double),d->n->NM,grid_repeat);
+    #endif
 
     SAFEALLOC(d->n->signalgrid, malloc(d->n->Nsignal * sizeof(double)));
     SAFEHMPDF(construct_signalgrid(d->n->Nsignal,
