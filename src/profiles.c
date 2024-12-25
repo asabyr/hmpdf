@@ -23,7 +23,7 @@
 #include "filter.h"
 #include "bcm.h"
 #include "profiles.h"
-
+#include <assert.h>
 #include "hmpdf.h"
 
 int
@@ -406,7 +406,9 @@ Battmodel_params;
 
 static inline double
 Battmodel_primitive(hmpdf_obj *d, double M200c, double z, int n)
-{
+{   //printf("param input amplitude%f\n:",d->p->Battaglia12_params[n*3+0]);
+    //printf("param input alpha m%f\n:",d->p->Battaglia12_params[n*3+1]);
+    //printf("param input alpha z%f\n:",d->p->Battaglia12_params[n*3+2]);
     return d->p->Battaglia12_params[n*3+0]
            * pow(M200c/1e14, d->p->Battaglia12_params[n*3+1])
            * pow(1.0+z, d->p->Battaglia12_params[n*3+2]);
@@ -449,6 +451,14 @@ tsz_profile(hmpdf_obj *d, int z_index, int M_index,
                      * d->c->rho_c[z_index] * d->c->Ob_0 / d->c->Om_0
                      * GNEWTON * SIGMATHOMSON / MELECTRON / gsl_pow_2(SPEEDOFLIGHT)
                      / 1.932/*convert from thermal to electron pressure*/;
+    
+    //printf("P0%f\n:",P0);
+    //printf("xc%f\n:",xc);
+    //printf("beta%f\n:",par.beta);
+    
+    FILE *fp_scale= fopen("/scratch/07833/tg871330/software_scratch/hmpdf/profiles/integration_scale.txt", "a");
+    fprintf(fp_scale, "%.10f %.10f\n",BATTINTEGR_EPSABS * (d->n->signalgrid[1]-d->n->signalgrid[0]) / scaling, scaling);
+    fclose(fp_scale);
 
     // loop over angles
     for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++)
@@ -473,7 +483,114 @@ tsz_profile(hmpdf_obj *d, int z_index, int M_index,
 
     ENDFCT
 }
-//}}}
+
+// Battaglia density profiles{{{
+typedef struct
+{
+    double alpha_dens;
+    double beta_dens;
+    double gamma_dens;
+    double rproj_dens;
+}
+Battmodel_density_params;
+
+static inline double
+Battmodel_density_primitive(hmpdf_obj *d, double M200c, double z, int n)
+{
+    return d->p->Battaglia16_params[n*3+0]
+           * pow(M200c/1e14, d->p->Battaglia16_params[n*3+1])
+           * pow(1.0+z, d->p->Battaglia16_params[n*3+2]);
+}
+
+static double
+Battmodel_density_integrand(double z, void *params)
+{
+    Battmodel_density_params *p = (Battmodel_density_params *)params;
+    
+    double r = hypot(z, p->rproj_dens);
+    return pow(r, p->gamma_dens)*pow(1.0 + pow(r, p->alpha_dens), -(p->beta_dens+p->gamma_dens)/p->alpha_dens);
+}
+
+static int
+electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
+            double mass_resc,
+            double theta_out, double Rout, double *p)
+{
+    STARTFCT
+    printf("M200m%10f\n", d->n->Mgrid[M_index]);
+    // convert to 200c
+    double M200c, R200c, c200c;
+    SAFEHMPDF(Mconv(d, z_index, M_index, hmpdf_mdef_c, mass_resc, &M200c, &R200c, &c200c));
+    double rho0 = Battmodel_density_primitive(d, M200c, d->n->zgrid[z_index], 0);
+    double xc = Battmodel_density_primitive(d, M200c, d->n->zgrid[z_index], 1);
+    Rout /= R200c * xc;
+    printf("M200c%10f\n", M200c);
+    printf("R200c%10f\n",R200c);
+    printf("rho0%10f\n",rho0);
+    printf("xc%10f\n",xc);
+    
+    // prepare the integration
+    Battmodel_density_params par;
+    par.alpha_dens = Battmodel_density_primitive(d, M200c, d->n->zgrid[z_index], 2);
+    par.beta_dens  = Battmodel_density_primitive(d, M200c, d->n->zgrid[z_index], 3);
+    par.gamma_dens = Battmodel_density_primitive(d, M200c, d->n->zgrid[z_index], 4);
+    printf("alpha%10f\n",par.alpha_dens);
+    printf("beta%10f\n",par.beta_dens);
+    printf("gamma%10f\n",par.gamma_dens);
+    gsl_function integrand;
+    integrand.function = &Battmodel_density_integrand;
+    integrand.params = &par;
+    gsl_integration_workspace *ws;
+    SAFEALLOC(ws, gsl_integration_workspace_alloc(BATTINTEGR_LIMIT));
+    
+    #ifdef SAVE_PROF
+    double P3D[d->p->Ntheta];
+    for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++){
+        double x = d->p->decr_tgrid[ii] *d->p->rout_scale;
+        P3D[ii-1]=rho0*pow(x/xc, par.gamma_dens)*pow(1.0+pow(x/xc,par.alpha_dens),-(par.beta_dens+par.gamma_dens)/par.alpha_dens);
+        }
+    char buffer[512];
+    sprintf(buffer, "/scratch/07833/tg871330/software_scratch/hmpdf/profiles/profile3D_%.8f_%.8f.bin", d->n->zgrid[z_index], M200c);
+    FILE *fp = fopen(buffer, "w");
+    fwrite(&d->p->rout_scale,sizeof(double),1,fp);
+    fwrite(d->p->decr_tgrid+1,sizeof(double),d->p->Ntheta, fp);
+    fwrite(P3D, sizeof(double), d->p->Ntheta, fp);
+    fclose(fp);
+    #endif
+    //rescaling from integration units to electron density units
+    double scaling = 2.0*rho0 * xc * d->c->rho_c[z_index] * d->c->Ob_0/d->c->Om_0/M_ATOMIC/1.14 * R200c * M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);    
+    printf("rho_c%10f\n",d->c->rho_c[z_index]);
+    printf("Ob_0%10f\n",d->c->Ob_0);
+    printf("Om_0%10f\n",d->c->Om_0);
+ 
+    FILE *fp_scale= fopen("/scratch/07833/tg871330/software_scratch/hmpdf/profiles/integration_scale.txt", "a");
+    fprintf(fp_scale, "%.10f %.10f\n",BATTINTEGR_EPSABS * (d->n->signalgrid[1]-d->n->signalgrid[0]) / scaling, scaling);
+    fclose(fp_scale);
+
+    //double scaling=1.0;
+    // loop over angles
+    for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++)
+    {
+        double t = d->p->decr_tgrid[ii] * theta_out;
+        par.rproj_dens = tan(t) * d->c->angular_diameter[z_index] / R200c / xc;
+        double lout = sqrt(Rout*Rout - par.rproj_dens*par.rproj_dens);
+
+        double err;
+       SAFEGSL(gsl_integration_qag(&integrand, 0.0, lout,
+                                    BATTINTEGR_EPSABS
+                                    * (d->n->signalgrid[1]-d->n->signalgrid[0]) / scaling,
+                                    BATTINTEGR_EPSREL,
+                                    BATTINTEGR_LIMIT, BATTINTEGR_KEY,
+                                    ws, p+ii, &err));
+
+        // normalize
+        p[ii] *= scaling;
+    }
+    //printf("scaling %.10e\n",scaling);
+    gsl_integration_workspace_free(ws);
+    //printf("made it through one profile");
+    ENDFCT
+}
 
 static int
 profile(hmpdf_obj *d, int z_index, int M_index, double *p)
@@ -490,8 +607,14 @@ profile(hmpdf_obj *d, int z_index, int M_index, double *p)
     // find the outer radius on the sky
     double M, Rout, c;
     SAFEHMPDF(Mconv(d, z_index, M_index, d->p->rout_def, mass_resc, &M, &Rout, &c));
+    
     Rout *= d->p->rout_scale;
     double theta_out = atan(Rout/d->c->angular_diameter[z_index]);
+    if (d->n->zgrid[z_index]<1.0)
+        {printf("z %10f\n", d->n->zgrid[z_index]);
+         printf("Rout%10f\n",Rout);
+         printf("theta_out%10f\n", theta_out);
+         printf("dA%10f\n",d->c->angular_diameter[z_index]);}
 
     if (d->p->stype == hmpdf_kappa
         && d->bcm->Arico20_params == NULL)
@@ -512,6 +635,12 @@ profile(hmpdf_obj *d, int z_index, int M_index, double *p)
         SAFEHMPDF(tsz_profile(d, z_index, M_index,
                               mass_resc,
                               theta_out, Rout, p+1));
+    }
+    else if (d->p->stype == hmpdf_electron_density)
+    {
+        SAFEHMPDF(electron_density_profile(d, z_index, M_index,
+                                   mass_resc,
+                                   theta_out, Rout, p+1));
     }
     else
     {
@@ -566,6 +695,9 @@ create_profiles(hmpdf_obj *d)
 
     HMPDFPRINT(2, "\tcreate_profiles\n");
     
+    FILE *fp_scale= fopen("/scratch/07833/tg871330/software_scratch/hmpdf/profiles/integration_scale.txt", "w");
+    fclose(fp_scale);
+ 
     SAFEALLOC(d->p->profiles, malloc(d->n->Nz * sizeof(double **)));
     SETARRNULL(d->p->profiles, d->n->Nz);
     #ifdef _OPENMP
@@ -589,7 +721,7 @@ create_profiles(hmpdf_obj *d)
                                              d->p->profiles[z_index][M_index]+1));
 	    #ifdef SAVE_PROF
             char buffer[512];
-            sprintf(buffer, "/scratch/07833/tg871330/tSZ_maps/hmpdf_maps/profiles/profile_%.8f_%.8f.bin", d->n->zgrid[z_index], d->n->Mgrid[M_index]);
+            sprintf(buffer, "/scratch/07833/tg871330/software_scratch/hmpdf/profiles/profile_%.8f_%.8f.bin", d->n->zgrid[z_index], d->n->Mgrid[M_index]);
             FILE *fp = fopen(buffer, "w");
 	    double theta_max=d->p->profiles[z_index][M_index][0];
 	    fwrite(&theta_max, sizeof(double), 1, fp);
@@ -1022,6 +1154,11 @@ inv_profile(hmpdf_obj *d, int z_index, int M_index, int segment,
     SAFEHMPDF(new_interp1d(len, temp, ordinate,
                            0.0, 0.0, INVPRINTERP_TYPE, NULL, &interp));
 
+    //printf("temp[len-1]%.10f\n",temp[len-1]);
+    //printf("temp[0]%.10f\n",temp[0]);
+    //printf("signalgrid[1]%.10f\n",d->n->signalgrid[1]);
+    //printf("d->n->signalgrid[0]%.10f\n",d->n->signalgrid[0]);
+
     // auxiliary variables to keep track of current state
     int inbatch = 0;
     int len_this_batch = (int)(fabs(temp[len-1]-temp[0])
@@ -1057,6 +1194,8 @@ inv_profile(hmpdf_obj *d, int z_index, int M_index, int segment,
                 HMPDFCHECK(b->len > 0, "something is weird with this profile "
                                        "(z = %d, M = %d, segment = %d)",
                                        z_index, M_index, segment);
+                printf("len_this_batch %d \n",len_this_batch);
+                //assert(b->data != NULL);  // Ensure allocation succeeded
                 SAFEALLOC(b->data, malloc(len_this_batch * sizeof(double)));
                 b->start = ii;
                 b->incr = sgn;

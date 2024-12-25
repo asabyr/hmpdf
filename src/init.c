@@ -297,6 +297,8 @@ init_params(hmpdf_obj *d, param *p)
            d->h->Tinker10_params, dptr_type, def.Tinker10_p);
     INIT_P(hmpdf_Battaglia12_tsz_params,
            d->p->Battaglia12_params, dptr_type, def.Battaglia12_p);
+    INIT_P(hmpdf_Battaglia16_density_params,
+            d->p->Battaglia16_params,dptr_type,def.Battaglia16_p);
     INIT_P(hmpdf_noise_pwr,
            d->ns->noise_pwr, np_type, def.noise_pwr);
     INIT_P(hmpdf_noise_pwr_params,
@@ -507,7 +509,7 @@ sanity_checks(hmpdf_obj *d)
 {//{{{
     STARTFCT
 
-    HMPDFCHECK((d->p->stype != hmpdf_tsz) && (d->p->stype != hmpdf_kappa),
+    HMPDFCHECK((d->p->stype != hmpdf_tsz) && (d->p->stype != hmpdf_kappa) && (d->p->stype != hmpdf_electron_density),
                "Invalid signal type %d.", d->p->stype);
     HMPDFCHECK((d->p->stype==hmpdf_kappa)
                 && ((d->n->zsource < (d->n->zmax-0.001)) || (d->n->zsource > 1200.0)),
@@ -562,7 +564,7 @@ int
 hmpdf_init_fct(hmpdf_obj *d, char *class_ini, hmpdf_signaltype_e stype, ...)
 {//{{{
     STARTFCT
-
+    printf("first line\n");
     gsl_set_error_handler(&new_gsl_error_handler);
 
     d->inited = 0;
@@ -585,7 +587,7 @@ hmpdf_init_fct(hmpdf_obj *d, char *class_ini, hmpdf_signaltype_e stype, ...)
         // Thus, do not move this past the init_params() call!
         d->n->zsource = va_arg(valist, double);
     }
-
+    printf("before init params\n");
     param *p;
     SAFEALLOC(p, malloc((int)(hmpdf_end_configs) * sizeof(param)));
     SAFEHMPDF(init_params(d, p));
@@ -631,18 +633,18 @@ hmpdf_init_fct(hmpdf_obj *d, char *class_ini, hmpdf_signaltype_e stype, ...)
 
     // do necessary conversions
     SAFEHMPDF(unit_conversions(d));
-
+    printf("units\n");
     // perform basic sanity checks
     SAFEHMPDF(sanity_checks(d));
-
+    printf("sanity\n");
     // this frees all the computed quantities,
     // since we assume that each call of init changes some
     // parameter (cosmological or numerical)
     SAFEHMPDF(reset_obj(d));
-
+    printf("reset\n");
     // compute things that we need for all output products
     SAFEHMPDF(compute_necessary_for_all(d));
-
+    printf("compute necessary\n");
     d->inited = 1;
 
     ENDFCT

@@ -20,6 +20,9 @@
 #define SIGMATHOMSON 6.98684e-74 // Mpc^2
 #define MELECTRON    4.58110e-61 // Msun
 #define RADPERARCMIN (M_PI/180.0/60.0) // rad/arcmin
+#define M_ATOMIC 1.66053906892e-27 //atomic mass unit in kg
+#define M_SOLAR_KG 1.988416e30 //Msun in kg
+#define CM_PC 3.0856775814913673e18 //cm per pc
 
 static inline int
 hmpdf_status_update(int *status, int result)

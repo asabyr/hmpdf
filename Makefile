@@ -10,7 +10,8 @@
 #endif
 
 #PATHTOGSL=/opt/apps/intel18/gsl/2.6
-PATHTOGSL=/opt/apps/intel24/gsl/2.7.1
+#PATHTOGSL=/opt/apps/intel24/gsl/2.7.1
+PATHTOGSL=/opt/apps/intel24/gsl/2.8
 #PATHTOGSL=/work/07833/tg871330/stampede3/software/gsl-2.6
 PATHTOCLASS=/work2/07833/tg871330/stampede3/software/class_public-3.2.0
 #PATHTOFFTW=/moto/opt/fftw3/fftw-3.3.10
@@ -22,7 +23,8 @@ CC = gcc
 ARCHIVE = libhmpdf.a
 SHARED = libhmpdf.so
 
-CFLAGS = --std=gnu99 -fPIC -Wall -Wextra -Wpedantic -Wno-variadic-macros -Winline -DHAVE_INLINE -DDEBUG -DARICO20
+CFLAGS = --std=gnu99 -fPIC -Wall -Wextra -Wpedantic -Wno-variadic-macros -Winline -DHAVE_INLINE -DDEBUG -DARICO20 -DSAVE_PROF
+#CFLAGS = --std=gnu99 -fPIC -Wall -Wextra -Wpedantic -Wno-variadic-macros -Winline -DHAVE_INLINE -DDEBUG -DARICO20
 #CFLAGS = --std=gnu99 -fPIC -Wall -Wextra -Wpedantic -Wno-variadic-macros -Winline -DHAVE_INLINE -DDEBUG -DARICO20 -DHMFSWAP
 #CFLAGS = --std=gnu99 -fPIC -Wall -Wextra -Wpedantic -Wno-variadic-macros -Winline -DHAVE_INLINE -DDEBUG -DARICO20 -DSAVE_PROF -DSAVE_HMF -DSAVE_SIGMA_NU
 

@@ -23,6 +23,14 @@ def_Battaglia12_tsz_params[] = { 18.1  ,  0.154  , -0.758,   // P0
                                   1.0  ,  0.0    ,  0.0  ,   // alpha
                                   4.35 ,  0.0393 ,  0.415,   // beta
                                  -0.3  ,  0.0    ,  0.0  , };// gamma
+//https://arxiv.org/pdf/1607.02442, table 2, AGN
+//cross-checked with class_sz values too
+static double
+def_Battaglia16_density_params[] = {4e3,  0.29, -0.66,//rho0
+                                    0.5,  0.0, 0.0, //xc 
+                                    0.88, -0.03, 0.19, //alpha
+                                    3.83, 0.04, -0.025, //beta
+                                    -0.2, 0.0, 0.0,}; //gamma
 
 struct DEFAULTS def = { .Ncores={1,1,1000}, .verbosity=0, .warn_is_err=1,
                         .class_pre="none",
@@ -59,7 +67,7 @@ struct DEFAULTS def = { .Ncores={1,1,1000}, .verbosity=0, .warn_is_err=1,
                         .Mintegr_alpha=0.0, .Mintegr_beta=0.0,
                         .Duffy08_p=def_Duffy08_conc_params,
                         .Tinker10_p=def_Tinker10_hmf_params,
-                        .Battaglia12_p=def_Battaglia12_tsz_params,
+                        .Battaglia12_p=def_Battaglia12_tsz_params,.Battaglia16_p=def_Battaglia16_density_params,
                         .noise_pwr=NULL, .noise_pwr_params=NULL,
                         .fsky={-1.0,0.0,1.0}, .pxlgrid={3,1,20}, .mappoisson=1, .mapseed=INT_MAX};
 

@@ -11,6 +11,7 @@ typedef struct//{{{
     int inited_profiles;
 
     double *Battaglia12_params;
+    double *Battaglia16_params;
 
     hmpdf_signaltype_e stype;
 

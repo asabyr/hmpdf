@@ -24,6 +24,7 @@ typedef enum
 {
     hmpdf_kappa, /*!< weak lensing convergence */
     hmpdf_tsz,   /*!< tSZ effect (Compton-y) */
+    hmpdf_electron_density,
 } hmpdf_signaltype_e;
 
 /*! Fixed point integration modes.
@@ -457,6 +458,7 @@ typedef enum
                                    *   Type: double[15]. Default: see src/configs.c.
                                    *   \remark in the python wrapper, pass a 1d numpy array
                                    */
+    hmpdf_Battaglia16_density_params,
     hmpdf_noise_pwr, /*!< Option to add pixel-wise Gaussian noise with this power spectrum.
                       *   \par
                       *   Type: #hmpdf_noise_pwr_f. Default: None.

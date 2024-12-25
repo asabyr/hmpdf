@@ -123,7 +123,7 @@ struct DEFAULTS {int Ncores[3]; int verbosity; int warn_is_err;
                  double phijitter[3]; double phipwr;
                  hmpdf_integr_mode_e zintegr_type[3]; double zintegr_alpha; double zintegr_beta;
                  hmpdf_integr_mode_e Mintegr_type[3]; double Mintegr_alpha; double Mintegr_beta;
-                 double *Duffy08_p; double *Tinker10_p; double *Battaglia12_p;
+                 double *Duffy08_p; double *Tinker10_p; double *Battaglia12_p; double *Battaglia16_p;
                  hmpdf_noise_pwr_f noise_pwr; void *noise_pwr_params;
                  double fsky[3]; int pxlgrid[3]; int mappoisson; int mapseed; };
 
