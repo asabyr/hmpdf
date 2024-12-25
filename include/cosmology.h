@@ -21,6 +21,9 @@ typedef struct//{{{
     double *Om;
     double Om_0;
     double Ob_0;
+    double YHe;
+    double y_H;
+    double y_He;
 }//}}}
 cosmology_t;
 

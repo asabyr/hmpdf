@@ -493,6 +493,14 @@ typedef enum
                      *   \par
                      *   Type: int. Default: None.
                      */
+    hmpdf_y_H, /* Ionization fraction for Hydrogen (needed for electron density profiles)
+                * \par
+                * Type: double. Default: 1.0
+                */
+    hmpdf_y_He,/* Ionization fraction for Helium (needed for electron density profiles)
+                * \par
+                * Type: double. Default: 1.0
+                */
     hmpdf_end_configs, /*!< required last argument in hmpdf_init_fct(), the convenience macro
                         *   hmpdf_init() takes care of that.
                         */

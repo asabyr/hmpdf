@@ -231,6 +231,16 @@ fill_background(hmpdf_obj *d)
     ENDFCT
 }//}}}
 
+static int
+
+fill_thermo(hmpdf_obj *d)
+{STARTFCT
+    HMPDFPRINT(2, "\tfill_thermodynamics\n");
+    struct thermodynamics *th= (struct thermodynamics *)d->cls->th;
+    d->c->YHe = th->YHe;//primordial Helium abundance
+ENDFCT
+}
+
 int
 init_cosmology(hmpdf_obj *d)
 {//{{{
@@ -240,6 +250,7 @@ init_cosmology(hmpdf_obj *d)
 
     SAFEHMPDF(alloc_cosmo(d));
     SAFEHMPDF(fill_background(d));
+    SAFEHMPDF(fill_thermo(d));
 
     ENDFCT
 }//}}}
