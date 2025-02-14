@@ -23,7 +23,7 @@
 #define M_ATOMIC 1.66053906892e-27 //atomic mass unit in kg
 #define M_SOLAR_KG 1.988416e30 //Msun in kg
 #define CM_PC 3.0856775814913673e18 //cm per pc
-
+#define MPROTON 1.67262192595e-27//mass of proton in kg
 static inline int
 hmpdf_status_update(int *status, int result)
 {//{{{

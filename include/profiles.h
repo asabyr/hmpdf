@@ -12,9 +12,10 @@ typedef struct//{{{
 
     double *Battaglia12_params;
     double *Battaglia16_params;
+    double *Lee22_BPL_params;
 
     hmpdf_signaltype_e stype;
-
+    int ne_profile;
     double rout_scale;
     int rout_def;
     int Ntheta;

@@ -27,6 +27,14 @@ typedef enum
     hmpdf_electron_density,
 } hmpdf_signaltype_e;
 
+/* electron density profile type */
+
+typedef enum
+{
+hmpdf_ne_B16,
+hmpdf_ne_L22_BPL,
+} hmpdf_ne_profile_e;
+
 /*! Fixed point integration modes.
  *
  *  The integrals over halo mass and redshift are performed using fixed point quadratures,
@@ -459,6 +467,8 @@ typedef enum
                                    *   \remark in the python wrapper, pass a 1d numpy array
                                    */
     hmpdf_Battaglia16_density_params,
+    hmpdf_Lee22_BPL_density_params,
+    hmpdf_ne_profile, 
     hmpdf_noise_pwr, /*!< Option to add pixel-wise Gaussian noise with this power spectrum.
                       *   \par
                       *   Type: #hmpdf_noise_pwr_f. Default: None.

@@ -27,6 +27,7 @@ typedef enum
     dbl_type, // double
     mdef_type, // hmpdf_mdef_e
     integr_type, // hmpdf_integr_mode_e
+    ne_type, //hmpdf_ne_profile
     end_comparable_dtypes,
     str_type, // char *
     strptr_type, // char **
@@ -58,6 +59,7 @@ dtype;
             case (dptr_type) : expr(double *); break;              \
             case (mdef_type) : expr(hmpdf_mdef_e); break;          \
             case (integr_type) : expr(hmpdf_integr_mode_e); break; \
+            case (ne_type) : expr(hmpdf_ne_profile_e); break;        \
             case (vptr_type) : expr(void *); break;                \
             case (lf_type) : expr(hmpdf_ell_filter_f); break;      \
             case (kf_type) : expr(hmpdf_k_filter_f); break;        \
@@ -298,7 +300,11 @@ init_params(hmpdf_obj *d, param *p)
     INIT_P(hmpdf_Battaglia12_tsz_params,
            d->p->Battaglia12_params, dptr_type, def.Battaglia12_p);
     INIT_P(hmpdf_Battaglia16_density_params,
-            d->p->Battaglia16_params,dptr_type,def.Battaglia16_p);
+            d->p->Battaglia16_params, dptr_type,def.Battaglia16_p);
+    INIT_P(hmpdf_Lee22_BPL_density_params,
+            d->p->Lee22_BPL_params, dptr_type, def.Lee22_BPL_p);
+    INIT_P_B(hmpdf_ne_profile,
+             d->p->ne_profile, ne_type, def.ne_prof);
     INIT_P(hmpdf_noise_pwr,
            d->ns->noise_pwr, np_type, def.noise_pwr);
     INIT_P(hmpdf_noise_pwr_params,
@@ -518,6 +524,8 @@ sanity_checks(hmpdf_obj *d)
     HMPDFCHECK((d->p->stype==hmpdf_kappa)
                 && ((d->n->zsource < (d->n->zmax-0.001)) || (d->n->zsource > 1200.0)),
                 "Invalid source redshift %g.", d->n->zsource);
+    HMPDFCHECK((d->p->ne_profile != hmpdf_ne_B16) && (d->p->ne_profile != hmpdf_ne_L22_BPL), 
+                "Invalid electron density profile %d.", d->p->ne_profile);
     #ifndef _OPENMP
     HMPDFCHECK(d->Ncores>1, "You specified hmpdf_N_threads = %d, "
                             "but code is compiled without OpenMP.", d->Ncores);
