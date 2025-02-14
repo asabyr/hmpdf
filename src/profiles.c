@@ -482,7 +482,7 @@ typedef struct
     double gamma_dens;
     double rproj_dens;
 }
-Battmodel_density_params;
+density_params;
 
 static inline double
 Battmodel_density_primitive(hmpdf_obj *d, double M200c, double z, int n)
@@ -495,10 +495,44 @@ Battmodel_density_primitive(hmpdf_obj *d, double M200c, double z, int n)
 static double
 Battmodel_density_integrand(double z, void *params)
 {
-    Battmodel_density_params *p = (Battmodel_density_params *)params;
-    
+    density_params *p = (density_params *)params;
     double r = hypot(z, p->rproj_dens);
     return pow(r, p->gamma_dens)*pow(1.0 + pow(r, p->alpha_dens), -(p->beta_dens+p->gamma_dens)/p->alpha_dens);
+}
+
+//Lee density profiles
+static inline double
+Leemodel_BPL_density_primitive(hmpdf_obj *d, double M200c, double z,  int n)
+{   
+    double A_partial=d->p->Lee22_BPL_params[n*4+0]*pow(1.0+z,d->p->Lee22_BPL_params[n*4+3]);
+    double Mcut = pow(10.0,d->p->Lee22_BPL_params[5*4+0])/d->c->h;
+
+
+        if (M200c < Mcut){
+
+            return A_partial*pow(M200c/Mcut,d->p->Lee22_BPL_params[n*4+1]);
+
+        }else if (M200c == Mcut){
+
+            return A_partial;
+
+        }else if (M200c > Mcut){
+
+            return A_partial*pow(M200c/Mcut, d->p->Lee22_BPL_params[n*4+2]);
+        }
+}
+//no BPL
+static inline double
+Leemodel_density_primitive(hmpdf_obj *d, double M200c, double z,  int n)
+{    double M14=pow(10.0, 14.0);
+     return d->p->Lee22_BPL_params[n*4+0]*pow(1.0+z,d->p->Lee22_BPL_params[n*4+3])*pow(M200c/M14,d->p->Lee22_BPL_params[n*4+1]);
+}
+static double
+Leemodel_density_integrand(double z, void *params)
+{
+    density_params *p = (density_params *)params;
+    double r = hypot(z, p->rproj_dens);
+    return pow(r, p->gamma_dens)*pow(1.0+pow(r, p->alpha_dens), -p->beta_dens);
 }
 
 static int
@@ -512,30 +546,102 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     // convert to 200c
     double M200c, R200c, c200c;
     SAFEHMPDF(Mconv(d, z_index, M_index, hmpdf_mdef_c, mass_resc, &M200c, &R200c, &c200c));
-    double rho0 = Battmodel_density_primitive(d, M200c, d->n->zgrid[z_index], 0);
-    double xc = Battmodel_density_primitive(d, M200c, d->n->zgrid[z_index], 1);
-    Rout /= R200c * xc;
+    //M200c=pow(10,14.0)/d->c->h;
+ 
+    //need to initialize these
+    gsl_function integrand; 
+    density_params par;
+    double xc;
+    double scaling;
+    char *prof_name; 
+    double ne0;
+    double rho0;
+ 
+    if (d->p->ne_profile==hmpdf_ne_B16){
     
-    // prepare the integration
-    Battmodel_density_params par;
+    prof_name="B16";
+    rho0 = Battmodel_density_primitive(d, M200c, d->n->zgrid[z_index], 0);
+    xc = Battmodel_density_primitive(d, M200c, d->n->zgrid[z_index], 1);    
+    //printf("rho0%.3f\n",rho0);
+    //printf("xc%.3f\n",xc);
+    //printf("R200c%.3f\n",R200c); 
+    //integration 
     par.alpha_dens = Battmodel_density_primitive(d, M200c, d->n->zgrid[z_index], 2);
     par.beta_dens  = Battmodel_density_primitive(d, M200c, d->n->zgrid[z_index], 3);
     par.gamma_dens = Battmodel_density_primitive(d, M200c, d->n->zgrid[z_index], 4);
-    
-    gsl_function integrand;
     integrand.function = &Battmodel_density_integrand;
+
+    //rescaling from integration units to electron density units in pc/cm^3
+    double XH=1-d->c->YHe; //Hydrogen mass fraction
+    double mu_e=d->c->y_H*XH+d->c->y_He*0.5*d->c->YHe;//mean molecular weight per electron, https://arxiv.org/pdf/2208.07847 pg7
+    double f_free=(d->c->y_H+d->c->y_He)/2.0; //free electron fraction
+    scaling = 2.0*rho0 * xc * d->c->rho_c[z_index] * d->c->Ob_0/d->c->Om_0/M_ATOMIC/1.14 * R200c * M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
+    //printf("scaling %f\n",scaling);
+     }
+
+    else if (d->p->ne_profile==hmpdf_ne_L22_BPL){
+    
+    prof_name="L22_BPL";
+    ne0 = Leemodel_density_primitive(d, M200c, d->n->zgrid[z_index], 0);
+    xc = Leemodel_BPL_density_primitive(d, M200c, d->n->zgrid[z_index], 1);
+    //printf("ne %.3f\n",ne0);  
+    //integration 
+    par.alpha_dens = Leemodel_BPL_density_primitive(d, M200c, d->n->zgrid[z_index], 2);
+    par.beta_dens = Leemodel_BPL_density_primitive(d, M200c, d->n->zgrid[z_index], 3);
+    par.gamma_dens = Leemodel_BPL_density_primitive(d, M200c, d->n->zgrid[z_index], 4);
+    integrand.function = &Leemodel_density_integrand; 
+
+    //printf("alpha%.3f\n",par.alpha_dens);
+    //printf("beta%.3f\n",par.beta_dens);
+    //printf("gamma%.3f\n",par.gamma_dens);
+ 
+    double XH=1-d->c->YHe; //Hydrogen mass fraction
+ 
+    scaling = 2.0 * ne0 * xc * 200.0 * d->c->rho_c[z_index]* d->c->Ob_0/d->c->Om_0 * R200c/XH/MPROTON*M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
+    //printf("scaling %.3f\n",scaling);
+    
+    }
+    else
+    {
+        HMPDFERR("unkown electron density profile.");
+    }
+
+    Rout /= R200c * xc; 
     integrand.params = &par;
     gsl_integration_workspace *ws;
     SAFEALLOC(ws, gsl_integration_workspace_alloc(BATTINTEGR_LIMIT));
-    
+     
     #ifdef SAVE_PROF
+    //just saves 3D
     double P3D[d->p->Ntheta];
+    if (d->p->ne_profile==hmpdf_ne_B16){
+    //double XH_L22=1-d->c->YHe;
+    //double ne0_L22 = Leemodel_density_primitive(d, M200c, d->n->zgrid[z_index], 0);
+    //double xc_L22 = Leemodel_BPL_density_primitive(d, M200c, d->n->zgrid[z_index], 1);
+    //double scaling_L22=2.0 * ne0_L22 * xc_L22 * 200.0 * d->c->rho_c[z_index]* d->c->Ob_0/d->c->Om_0 * R200c/XH_L22/MPROTON*M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10); 
     for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++){
         double x = d->p->decr_tgrid[ii] *d->p->rout_scale;
-        P3D[ii-1]=rho0*pow(x/xc, par.gamma_dens)*pow(1.0+pow(x/xc,par.alpha_dens),-(par.beta_dens+par.gamma_dens)/par.alpha_dens);
+        //P3D[ii-1]=scaling/scaling_L22*rho0*pow(x/xc, par.gamma_dens)*pow(1.0+pow(x/xc,par.alpha_dens),-(par.beta_dens+par.gamma_dens)/par.alpha_dens);
+        P3D[ii-1]=rho0*pow(x/xc, par.gamma_dens)*pow(1.0+pow(x/xc,par.alpha_dens),-(par.beta_dens-par.gamma_dens)/par.alpha_dens);
         }
+    
+    }
+    
+    else if (d->p->ne_profile==hmpdf_ne_L22_BPL){
+    
+    for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++){
+        double x = d->p->decr_tgrid[ii] *d->p->rout_scale;
+        P3D[ii-1]=ne0*pow(x/xc, par.gamma_dens)*pow(1.0+pow(x/xc,par.alpha_dens),-par.beta_dens);
+        }
+    
+    }
+    else
+    {
+        HMPDFERR("unkown electron density profile.");
+    }
+
     char buffer[512];
-    sprintf(buffer, "/scratch/07833/tg871330/software_scratch/hmpdf/profiles/profile3D_%.8f_%.8f.bin", d->n->zgrid[z_index], M200c);
+    sprintf(buffer, "/scratch/07833/tg871330/software_scratch/hmpdf/profiles/profile3D_%s_%.8f_%.8f.bin", prof_name, d->n->zgrid[z_index], M200c);
     FILE *fp = fopen(buffer, "w");
     fwrite(&d->p->rout_scale,sizeof(double),1,fp);
     fwrite(d->p->decr_tgrid+1,sizeof(double),d->p->Ntheta, fp);
@@ -543,12 +649,6 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     fclose(fp);
     #endif
     
-    //rescaling from integration units to electron density units in pc/cm^3
-    double XH=1-d->c->YHe; //Hydrogen mass fraction
-    double mu_e=d->c->y_H*XH+d->c->y_He*0.5*d->c->YHe;//mean molecular weight per electron, https://arxiv.org/pdf/2208.07847 pg7
-    double f_free=(d->c->y_H+d->c->y_He)/2.0; //free electron fraction
-    double scaling = 2.0*rho0 * xc * d->c->rho_c[z_index] * d->c->Ob_0/d->c->Om_0/M_ATOMIC/1.14 * R200c * M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);    
- 
 
     // loop over angles
     for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++)
