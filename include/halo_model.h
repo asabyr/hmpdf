@@ -27,6 +27,8 @@ typedef struct//{{{
 
     double **hmf;
     double **bias;
+    
+    char *hmf_file;
 
     gsl_spline *c_interp;
     gsl_interp_accel **c_accel;

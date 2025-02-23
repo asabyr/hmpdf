@@ -384,6 +384,14 @@ create_dndlogM(hmpdf_obj *d)
                               d->h->hmf[z_index]+M_index,
                               d->h->bias[z_index]+M_index));
         }
+    
+    if (strcmp(d->h->hmf_file, "none")!=0){ 
+    //printf("%s hmf file\n",d->h->hmf_file);
+    double hmf_input[d->n->Nz * d->n->NM];
+    FILE *fp_hmf=fopen(d->h->hmf_file, "rb");
+    fread(hmf_input, sizeof(double), d->n->Nz * d->n->NM, fp_hmf);
+    }
+    
 
 	#ifdef SAVE_HMF
 	char buffer[512];

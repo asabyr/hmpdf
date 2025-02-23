@@ -321,7 +321,8 @@ init_params(hmpdf_obj *d, param *p)
              d->c->y_H, dbl_type, def.y_Hyd);
     INIT_P_B(hmpdf_y_He,
              d->c->y_He, dbl_type, def.y_Hel);
-    
+    INIT_P(hmpdf_hmf_swap,
+           d->h->hmf_file, str_type, def.hmf_swap);    
     HMPDFCHECK(ctr != hmpdf_end_configs, "Not all params filled, ctr = %d.", ctr);
 
     ENDFCT
