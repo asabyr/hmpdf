@@ -575,7 +575,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     double XH=1-d->c->YHe; //Hydrogen mass fraction
     double mu_e=d->c->y_H*XH+d->c->y_He*0.5*d->c->YHe;//mean molecular weight per electron, https://arxiv.org/pdf/2208.07847 pg7
     double f_free=(d->c->y_H+d->c->y_He)/2.0; //free electron fraction
-    scaling = 2.0*rho0 * xc * d->c->rho_c[z_index] * d->c->Ob_0/d->c->Om_0/M_ATOMIC/1.14 * R200c * M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
+    scaling = f_free*2.0*rho0 * xc * d->c->rho_c[z_index] * d->c->Ob_0/d->c->Om_0/M_ATOMIC/mu_e * R200c * M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
     //printf("scaling %f\n",scaling);
      }
 
@@ -596,7 +596,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     //printf("gamma%.3f\n",par.gamma_dens);
  
     double XH=1-d->c->YHe; //Hydrogen mass fraction
- 
+    
     scaling = 2.0 * ne0 * xc * 200.0 * d->c->rho_c[z_index]* d->c->Ob_0/d->c->Om_0 * R200c/XH/MPROTON*M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
     //printf("scaling %.3f\n",scaling);
     
