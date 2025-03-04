@@ -14,9 +14,11 @@ typedef struct
     int created_noisy_op;
     double *PDFu_noisy;
     double *PDFc_noisy;
-
+    
     double signalmeanu;
     double signalmeanc;
+    double dm_igm_tot;
+    char *DM_IGM_type;
 }//}}}
 onepoint_t;
 

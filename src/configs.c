@@ -82,7 +82,8 @@ struct DEFAULTS def = { .Ncores={1,1,1000}, .verbosity=0, .warn_is_err=1,
                         .Battaglia12_p=def_Battaglia12_tsz_params,.Battaglia16_p=def_Battaglia16_density_params,.Lee22_BPL_p=def_Lee22_BPL_density_params,
                         .ne_prof={hmpdf_ne_B16,0,hmpdf_ne_L22_BPL},
                         .noise_pwr=NULL, .noise_pwr_params=NULL,
-                        .fsky={-1.0,0.0,1.0}, .pxlgrid={3,1,20}, .mappoisson=1, .mapseed=INT_MAX, .y_Hyd={1.0,0.1,1.0},.y_Hel={1.0,0.1,1.0}, .hmf_swap="none"};
+                        .fsky={-1.0,0.0,1.0}, .pxlgrid={3,1,20}, .mappoisson=1, .mapseed=INT_MAX, .y_Hyd={1.0,0.1,1.0},.y_Hel={1.0,0.1,1.0}, .hmf_swap="none", 
+                        .dm_igm="none"};
 
 // The following is only needed for more reliable interaction
 //     with the python wrapper

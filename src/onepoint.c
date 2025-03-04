@@ -30,7 +30,7 @@ null_onepoint(hmpdf_obj *d)
     d->op->PDFc = NULL;
     d->op->PDFu_noisy = NULL;
     d->op->PDFc_noisy = NULL;
-
+    d->op->dm_igm_tot = 0.0;
     ENDFCT
 }//}}}
 
@@ -172,6 +172,26 @@ op_zint(hmpdf_obj *d, double complex *pu_comp, double complex *pc_comp) // p is 
 }//}}}
 
 static int
+get_DM_IGM(hmpdf_obj *d)
+{   
+    STARTFCT
+    if (strcmp(d->op->DM_IGM_type,"homogeneous")==0.0){
+    double XH=1-d->c->YHe; //Hydrogen mass fraction
+    double mu_e=d->c->y_H*XH+d->c->y_He*0.5*d->c->YHe;//mean molecular weight per electron, https://arxiv.org/pdf/2208.07847 pg7
+    double f_free=(d->c->y_H+d->c->y_He)/2.0; //free electron fraction
+    double prefactors = f_free*d->c->Ob_0 * d->c->rho_c_0/mu_e/M_ATOMIC*M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
+    double ne_IGM=0.0;
+     for (int z_index=0; z_index<d->n->Nz; z_index++)
+    {   
+        ne_IGM+=d->n->zweights[z_index]/d->c->hubble[z_index]*(1+d->n->zgrid[z_index]);
+        } 
+    d->op->dm_igm_tot=ne_IGM*prefactors;
+    printf("IGM contribution (homogeneous)%.3f\n:", d->op->dm_igm_tot*1e10); 
+    }
+    ENDFCT
+}
+
+static int
 compute_mean(long N, const double *const x, const double *const p, double *out)
 {//{{{
     STARTFCT
@@ -259,7 +279,10 @@ create_op(hmpdf_obj *d)
     fftw_execute(plan_c);
     fftw_destroy_plan(plan_u);
     fftw_destroy_plan(plan_c);
-
+    
+    //compute IGM contribution if asked
+    if (strcmp(d->op->DM_IGM_type,"none") != 0){
+        SAFEHMPDF(get_DM_IGM(d));}
     // compute the mean of the distributions
     SAFEHMPDF(get_mean_signal(d));
 
@@ -322,7 +345,13 @@ pdf_adjust_binedges(hmpdf_obj *d, int Nbins,
             binedges_out[ii] += mean;
         }
     }
-
+    if (d->p->stype == hmpdf_electron_density && strcmp(d->op->DM_IGM_type,"none") != 0)
+    {printf("adding IGM DM");
+        for (int ii=0; ii<=Nbins; ii++)
+        {
+            binedges_out[ii] -= d->op->dm_igm_tot;
+        }
+    }
     ENDFCT
 }//}}}
 

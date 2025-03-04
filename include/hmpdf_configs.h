@@ -512,6 +512,7 @@ typedef enum
                 * Type: double. Default: 1.0
                 */
     hmpdf_hmf_swap,
+    hmpdf_DM_IGM,
     hmpdf_end_configs, /*!< required last argument in hmpdf_init_fct(), the convenience macro
                         *   hmpdf_init() takes care of that.
                         */
