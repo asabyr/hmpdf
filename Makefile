@@ -10,12 +10,14 @@
 #endif
 
 #PATHTOGSL=/opt/apps/intel18/gsl/2.6
-PATHTOGSL=/opt/apps/intel24/gsl/2.7.1
+#PATHTOGSL=/opt/apps/intel24/gsl/2.7.1
 #PATHTOGSL=/work/07833/tg871330/stampede3/software/gsl-2.6
+PATHTOGSL=${TACC_GSL_DIR}
 PATHTOCLASS=/work2/07833/tg871330/stampede3/software/class_public-3.2.0
+PATHTOFFTW=${TACC_FFTW3_DIR}
 #PATHTOFFTW=/moto/opt/fftw3/fftw-3.3.10
 #PATHTOFFTW=/opt/apps/intel18/impi18_0/fftw3/3.3.8
-PATHTOFFTW=/opt/apps/intel24/impi21/fftw3/3.3.10
+#PATHTOFFTW=/opt/apps/intel24/impi21/fftw3/3.3.10
 #PATHTOFFTW=/work/07833/tg871330/stampede3/software/fftw-3.3.8
 
 CC = gcc
