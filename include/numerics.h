@@ -14,6 +14,8 @@ typedef struct//{{{
     double zmax;
     double *zgrid;
     double *zweights;
+    char *zgrid_file;
+    char *zweights_file;
 
     hmpdf_dndz_f dndz;
     void *dndz_params;
@@ -23,7 +25,9 @@ typedef struct//{{{
     double Mmax;
     double *Mgrid;
     double *Mweights;
-
+    char *Mgrid_file;
+    char *Mweights_file;
+    
     hmpdf_mass_cuts_f mass_cuts;
     void *mass_cuts_params;
 

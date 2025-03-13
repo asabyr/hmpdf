@@ -166,27 +166,44 @@ create_grids(hmpdf_obj *d)
 
     SAFEALLOC(d->n->zgrid,    malloc(d->n->Nz * sizeof(double)));
     SAFEALLOC(d->n->zweights, malloc(d->n->Nz * sizeof(double)));
+    
+    if (strcmp(d->n->zgrid_file, "none")!=0){
+    	FILE *fp_zgrid=fopen(d->n->zgrid_file, "rb");
+	fread(d->n->zgrid,sizeof(double),d->n->Nz,fp_zgrid);
+        FILE *fp_zweights=fopen(d->n->zweights_file,"rb");
+        fread(d->n->zweights,sizeof(double),d->n->Nz,fp_zweights);	
+    }
+    else{
     SAFEHMPDF(gauss_fixed_point(d->n->zintegr_type, d->n->Nz,
                                 d->n->zmin, d->n->zmax,
                                 d->n->zintegr_alpha,
                                 d->n->zintegr_beta,
                                 d->n->zgrid, d->n->zweights,
                                 1/*neutralize weights*/));
-
+    }
+   
     SAFEALLOC(d->n->Mgrid,    malloc(d->n->NM * sizeof(double)));
     SAFEALLOC(d->n->Mweights, malloc(d->n->NM * sizeof(double)));
+
+    if (strcmp(d->n->Mgrid_file, "none")!=0){
+	FILE *fp_Mgrid=fopen(d->n->Mgrid_file, "rb");
+	fread(d->n->Mgrid, sizeof(double), d->n->NM, fp_Mgrid);
+	FILE *fp_Mweights=fopen(d->n->Mweights_file, "rb");
+	fread(d->n->Mweights, sizeof(double), d->n->NM, fp_Mweights);
+    }
+    else{
     SAFEHMPDF(gauss_fixed_point(d->n->Mintegr_type, d->n->NM,
                                 log(d->n->Mmin), log(d->n->Mmax),
                                 d->n->Mintegr_alpha,
                                 d->n->Mintegr_beta,
                                 d->n->Mgrid, d->n->Mweights,
                                 1/*neutralize weights*/));
-
+    
     for (int ii=0; ii<d->n->NM; ii++)
     {
         d->n->Mgrid[ii] = exp(d->n->Mgrid[ii]);
     }
-
+    }
     SAFEALLOC(d->n->signalgrid, malloc(d->n->Nsignal * sizeof(double)));
     SAFEHMPDF(construct_signalgrid(d->n->Nsignal,
                                    &(d->n->Nsignal_negative),

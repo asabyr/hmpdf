@@ -325,6 +325,14 @@ init_params(hmpdf_obj *d, param *p)
            d->h->hmf_file, str_type, def.hmf_swap);
     INIT_P(hmpdf_DM_IGM, 
            d->op->DM_IGM_type, str_type, def.dm_igm);    
+    INIT_P(hmpdf_zgrid_file,
+           d->n->zgrid_file, str_type, def.zgrid_f);
+    INIT_P(hmpdf_zweights_file,
+           d->n->zweights_file, str_type, def.zweights_f);
+    INIT_P(hmpdf_Mgrid_file,
+           d->n->Mgrid_file, str_type, def.Mgrid_f); 
+    INIT_P(hmpdf_Mweights_file, 
+           d->n->Mweights_file, str_type, def.Mweights_f);
     HMPDFCHECK(ctr != hmpdf_end_configs, "Not all params filled, ctr = %d.", ctr);
 
     ENDFCT

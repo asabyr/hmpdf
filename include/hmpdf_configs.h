@@ -140,6 +140,8 @@ typedef enum
                       *   \par
                       *   Type: char *. Default: None (use CLASS's default precision settings).
                       */
+    hmpdf_zgrid_file,
+    hmpdf_zweights_file,
     hmpdf_N_z, /*!< number of sample points in redshift integration.
                 *   \par
                 *   Type: int. Default: 65.
@@ -178,6 +180,8 @@ typedef enum
                 *           (as well as #hmpdf_Mintegr_alpha and #hmpdf_Mintegr_beta)
                 *           you can gain some speed here.
                 */
+    hmpdf_Mgrid_file,
+    hmpdf_Mweights_file,
     hmpdf_M_min, /*!< minimum halo mass, in M200m definition and Msun units.
                   *   \par
                   *   Type: double. Default: 1e11.
