@@ -417,14 +417,12 @@ Battmodel_primitive(hmpdf_obj *d, double M200c, double z, int n)
 {
     if (d->p->mass_z_fix>0 && M200c>=d->p->min_mass_fix && z<=d->p->max_z_fix){
     
-    printf("fixed params\n");     
     return Battaglia12_tsz_params_fid[n*3+0]
            * pow(M200c/1e14, Battaglia12_tsz_params_fid[n*3+1])
            * pow(1.0+z, Battaglia12_tsz_params_fid[n*3+2]);
     }
     
     else {
-    printf("not\n");
     return d->p->Battaglia12_params[n*3+0]
            * pow(M200c/1e14, d->p->Battaglia12_params[n*3+1])
            * pow(1.0+z, d->p->Battaglia12_params[n*3+2]);
@@ -447,16 +445,12 @@ tsz_profile(hmpdf_obj *d, int z_index, int M_index,
 
     // convert to 200c
     double M200c, R200c, c200c;
-    printf("M200c%2f\n", log10(M200c));
-    printf("z%2f\n", d->n->zgrid[z_index]);
  
     SAFEHMPDF(Mconv(d, z_index, M_index, hmpdf_mdef_c, mass_resc, &M200c, &R200c, &c200c));
     double P0 = Battmodel_primitive(d, M200c, d->n->zgrid[z_index], 0);
     double xc = Battmodel_primitive(d, M200c, d->n->zgrid[z_index], 1);
     Rout /= R200c * xc;
     
-    printf("P0%f\n:",P0);
-    printf("xc%f\n:",xc);
     
     // prepare the integration
     Battmodel_params par;
@@ -464,9 +458,6 @@ tsz_profile(hmpdf_obj *d, int z_index, int M_index,
     par.beta  = Battmodel_primitive(d, M200c, d->n->zgrid[z_index], 3);
     par.gamma = Battmodel_primitive(d, M200c, d->n->zgrid[z_index], 4);
 
-    printf("alpha%10f\n",par.alpha);
-    printf("beta%10f\n",par.beta);
-    printf("gamma%10f\n",par.gamma);
     
     gsl_function integrand;
     integrand.function = &Battmodel_integrand;
