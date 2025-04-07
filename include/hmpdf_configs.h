@@ -177,6 +177,12 @@ typedef enum
                   *   \par
                   *   Type: double. Default: 1e16.
                   */
+    hmpdf_mass_z_fix, // whether to place a mass and redshift cut, which defines which halos have a fixed tSZ profile (Battaglia+12) 
+                      // Type: int. Default: 0
+    hmpdf_min_mass_fix, // Above this mass and below hmpdf_max_z_fix redshift, the profiles are fixed (in M200c)
+                        //Type: double. Default: 8*10^14
+    hmpdf_max_z_fix, //Below this redshift and above M200c hmpdf_min_mass_fix mass, the profiles are fixed
+                    //Type: double. Default: 0.5
     hmpdf_N_signal, /*!< number of points on which the one-point PDF is sampled internally
                      *   \par
                      *   Type: long. Default: 1024.

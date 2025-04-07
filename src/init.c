@@ -309,7 +309,13 @@ init_params(hmpdf_obj *d, param *p)
            d->m->mappoisson, int_type, def.mappoisson);
     INIT_P(hmpdf_map_seed,
            d->m->mapseed, int_type, def.mapseed);
-
+    INIT_P(hmpdf_mass_z_fix,
+            d->p->mass_z_fix, int_type, def.mass_z_fix_prof);
+    INIT_P(hmpdf_min_mass_fix,
+            d->p->min_mass_fix, dbl_type, def.min_mass_fix_prof);
+    INIT_P(hmpdf_max_z_fix,
+            d->p->max_z_fix, dbl_type, def.max_z_fix_prof);
+    
     HMPDFCHECK(ctr != hmpdf_end_configs, "Not all params filled, ctr = %d.", ctr);
 
     ENDFCT

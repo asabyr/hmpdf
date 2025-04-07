@@ -395,6 +395,14 @@ kappabcm_profile(hmpdf_obj *d, int z_index, int M_index,
 // }}}
 
 // Battaglia profiles{{{
+
+static double
+Battaglia12_tsz_params_fid[] = { 18.1  ,  0.154  , -0.758,   // P0
+                                  0.497, -0.00865,  0.731,   // xc
+                                  1.0  ,  0.0    ,  0.0  ,   // alpha
+                                  4.35 ,  0.0393 ,  0.415,   // beta
+                                 -0.3  ,  0.0    ,  0.0  , };// gamma
+
 typedef struct
 {
     double alpha;
@@ -407,10 +415,22 @@ Battmodel_params;
 static inline double
 Battmodel_primitive(hmpdf_obj *d, double M200c, double z, int n)
 {
+    if (d->p->mass_z_fix>0 && M200c>=d->p->min_mass_fix && z<=d->p->max_z_fix){
+    
+    printf("fixed params\n");     
+    return Battaglia12_tsz_params_fid[n*3+0]
+           * pow(M200c/1e14, Battaglia12_tsz_params_fid[n*3+1])
+           * pow(1.0+z, Battaglia12_tsz_params_fid[n*3+2]);
+    }
+    
+    else {
+    printf("not\n");
     return d->p->Battaglia12_params[n*3+0]
            * pow(M200c/1e14, d->p->Battaglia12_params[n*3+1])
            * pow(1.0+z, d->p->Battaglia12_params[n*3+2]);
+    }
 }
+
 static double
 Battmodel_integrand(double z, void *params)
 {
@@ -427,17 +447,27 @@ tsz_profile(hmpdf_obj *d, int z_index, int M_index,
 
     // convert to 200c
     double M200c, R200c, c200c;
+    printf("M200c%2f\n", log10(M200c));
+    printf("z%2f\n", d->n->zgrid[z_index]);
+ 
     SAFEHMPDF(Mconv(d, z_index, M_index, hmpdf_mdef_c, mass_resc, &M200c, &R200c, &c200c));
     double P0 = Battmodel_primitive(d, M200c, d->n->zgrid[z_index], 0);
     double xc = Battmodel_primitive(d, M200c, d->n->zgrid[z_index], 1);
     Rout /= R200c * xc;
-
+    
+    printf("P0%f\n:",P0);
+    printf("xc%f\n:",xc);
+    
     // prepare the integration
     Battmodel_params par;
     par.alpha = Battmodel_primitive(d, M200c, d->n->zgrid[z_index], 2);
     par.beta  = Battmodel_primitive(d, M200c, d->n->zgrid[z_index], 3);
     par.gamma = Battmodel_primitive(d, M200c, d->n->zgrid[z_index], 4);
 
+    printf("alpha%10f\n",par.alpha);
+    printf("beta%10f\n",par.beta);
+    printf("gamma%10f\n",par.gamma);
+    
     gsl_function integrand;
     integrand.function = &Battmodel_integrand;
     integrand.params = &par;
@@ -509,6 +539,7 @@ profile(hmpdf_obj *d, int z_index, int M_index, double *p)
     }
     else if (d->p->stype == hmpdf_tsz)
     {
+
         SAFEHMPDF(tsz_profile(d, z_index, M_index,
                               mass_resc,
                               theta_out, Rout, p+1));
@@ -587,14 +618,14 @@ create_profiles(hmpdf_obj *d)
             CONTINUE_IF_ERR
             SAFEHMPDF_NORETURN(fix_endpoints(d->p->Ntheta, d->p->decr_tgrid,
                                              d->p->profiles[z_index][M_index]+1));
-	    #ifdef SAVE_PROF
+	        #ifdef SAVE_PROF
             char buffer[512];
             sprintf(buffer, "/scratch/07833/tg871330/tSZ_maps/hmpdf_maps/profiles/profile_%.8f_%.8f.bin", d->n->zgrid[z_index], d->n->Mgrid[M_index]);
             FILE *fp = fopen(buffer, "w");
-	    double theta_max=d->p->profiles[z_index][M_index][0];
-	    fwrite(&theta_max, sizeof(double), 1, fp);
-	    fwrite(d->p->decr_tgrid,sizeof(double),d->p->Ntheta, fp);
-	    fwrite(d->p->profiles[z_index][M_index]+1, sizeof(double), d->p->Ntheta, fp);
+	        double theta_max=d->p->profiles[z_index][M_index][0];
+	        fwrite(&theta_max, sizeof(double), 1, fp);
+	        fwrite(d->p->decr_tgrid,sizeof(double),d->p->Ntheta, fp);
+	        fwrite(d->p->profiles[z_index][M_index]+1, sizeof(double), d->p->Ntheta, fp);
             fclose(fp);
             #endif
 

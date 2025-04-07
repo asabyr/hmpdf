@@ -51,6 +51,11 @@ typedef struct//{{{
 
     // populated later
     int *tot_profiles_indices;
+    
+    int mass_z_fix; 
+    double min_mass_fix;
+    double max_z_fix; 
+    
 }//}}}
 profiles_t;
 
