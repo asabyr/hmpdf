@@ -23,6 +23,7 @@ null_cosmology(hmpdf_obj *d)
     d->c->comoving = NULL;
     d->c->angular_diameter = NULL;
     d->c->invScrit = NULL;
+    d->c->volume_tot = NULL; 
     d->c->Dsq = NULL;
     d->c->rho_m = NULL;
     d->c->rho_c = NULL;
@@ -42,6 +43,7 @@ reset_cosmology(hmpdf_obj *d)
     if (d->c->comoving != NULL) { free(d->c->comoving); }
     if (d->c->angular_diameter != NULL) { free(d->c->angular_diameter); }
     if (d->c->invScrit != NULL) { free(d->c->invScrit); }
+    if (d->c->volume_tot != NULL) { free(d->c->volume_tot);}
     if (d->c->Dsq != NULL) { free(d->c->Dsq); }
     if (d->c->rho_m != NULL) { free(d->c->rho_m); }
     if (d->c->rho_c != NULL) { free(d->c->rho_c); }
@@ -70,6 +72,12 @@ alloc_cosmo(hmpdf_obj *d)
         SAFEALLOC(d->c->invScrit, malloc(d->n->Nz * sizeof(double)));
     }
 
+    if (d->p->stype == hmpdf_electron_density)
+
+    {
+	SAFEALLOC(d->c->volume_tot, malloc(d->n->Nz * sizeof(double)));
+    }
+
     ENDFCT
 }//}}}
 
@@ -87,6 +95,7 @@ typedef struct
 
     int status;
 } dndz_integr_params;
+
 
 static inline int
 dndz_integr_kernel(double z, dndz_integr_params *p, double *out)
@@ -115,6 +124,48 @@ dndz_integr_f(double z, void *params)
     p->status = dndz_integr_kernel(z, p, &out);
     return out;
 }
+
+typedef struct
+{
+    // CLASS stuff
+    double *pvecback;
+    struct background *ba;
+    int index;
+    int status;
+} dVdz_integr_params;
+
+
+static inline double 
+dVdz_kernel(double z, dVdz_integr_params *p, double *out)
+{
+   STARTFCT
+   
+   double tau;
+   
+   SAFECLASS(background_tau_of_z(p->ba, z, &tau),
+              p->ba->error_message);
+   SAFECLASS(background_at_tau(p->ba, tau, long_info, inter_normal, &p->index, p->pvecback),
+              p->ba->error_message);
+
+   double chi_z=p->pvecback[p->ba->index_bg_conf_distance];
+   double H_z=p->pvecback[p->ba->index_bg_H];
+
+   *out=pow(chi_z,2.0)/H_z;
+   
+   ENDFCT
+
+}
+
+static double
+dVdz_integr_f(double z, void *params)
+{
+   dVdz_integr_params *p = (dVdz_integr_params *)params; 
+   double out = 0.0;
+   p->status = dVdz_kernel(z, p, &out);
+   return out; 
+}
+
+
 
 static int
 fill_background(hmpdf_obj *d)
@@ -223,8 +274,36 @@ fill_background(hmpdf_obj *d)
                                           * (chi_s - d->c->comoving[z_index]) * d->c->angular_diameter[z_index]
                                           / dA_s;
             }
+	    
         }
-    } // if kappa
+	
+	} // if kappa
+
+	if (d->p->stype == hmpdf_electron_density)
+	{  
+	    gsl_integration_workspace *ws;
+            SAFEALLOC(ws, gsl_integration_workspace_alloc(DVDZ_INTEGR_LIMIT));
+            gsl_function F;
+            
+	    dVdz_integr_params p = { .ba=ba, .pvecback=pvecback, .index=0,
+                                     .status=0 };
+	    double err; 
+	    F.function = dVdz_integr_f;
+            F.params = &p;
+
+            // now compute the critical surface densities
+            for (int z_index=0; z_index<d->n->Nz; z_index++)
+            {
+                double out;
+                SAFEGSL(gsl_integration_qagiu(&F, d->n->zgrid[z_index],
+                                            DVDZ_INTEGR_EPSABS, DVDZ_INTEGR_EPSREL,
+                                            DVDZ_INTEGR_LIMIT, ws,
+                                            &out, &err));
+
+                HMPDFCHECK(p.status, "error encountered during integration");
+		d->c->volume_tot[z_index]=out*4.0*M_PI;
+	}	
+	}	
 
     free(pvecback);
 

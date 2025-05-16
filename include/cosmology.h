@@ -11,6 +11,7 @@ typedef struct//{{{
     double *comoving;
     double *angular_diameter;
     double *invScrit;
+    double *volume_tot; 
     double *Dsq;
     // simple quantities
     double h;
@@ -30,5 +31,4 @@ cosmology_t;
 int null_cosmology(hmpdf_obj *d);
 int reset_cosmology(hmpdf_obj *d);
 int init_cosmology(hmpdf_obj *d);
-
 #endif
