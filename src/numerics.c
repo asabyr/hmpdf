@@ -180,6 +180,13 @@ create_grids(hmpdf_obj *d)
                                 d->n->zintegr_beta,
                                 d->n->zgrid, d->n->zweights,
                                 1/*neutralize weights*/));
+    
+    //save z_grid
+    char buffer_z[512];
+    sprintf(buffer_z, "/burg/home/as6131/software/hmpdf/data/hmpdf_zgrid_N%d.bin", d->n->Nz);
+    FILE *fp_z = fopen(buffer_z, "w");
+    fwrite(d->n->zgrid,sizeof(double), d->n->Nz, fp_z);
+    fclose(fp_z);
     }
    
     SAFEALLOC(d->n->Mgrid,    malloc(d->n->NM * sizeof(double)));
@@ -192,6 +199,7 @@ create_grids(hmpdf_obj *d)
 	fread(d->n->Mweights, sizeof(double), d->n->NM, fp_Mweights);
     }
     else{
+    
     SAFEHMPDF(gauss_fixed_point(d->n->Mintegr_type, d->n->NM,
                                 log(d->n->Mmin), log(d->n->Mmax),
                                 d->n->Mintegr_alpha,
@@ -203,6 +211,14 @@ create_grids(hmpdf_obj *d)
     {
         d->n->Mgrid[ii] = exp(d->n->Mgrid[ii]);
     }
+    
+    //save M_grid
+    char buffer_M[512];
+    sprintf(buffer_M, "/burg/home/as6131/software/hmpdf/data/hmpdf_Mgrid_N%d.bin", d->n->NM); 
+    FILE *fp_M = fopen(buffer_M, "w"); 
+    fwrite(d->n->Mgrid, sizeof(double), d->n->NM, fp_M); 
+    fclose(fp_M); 
+    
     }
     SAFEALLOC(d->n->signalgrid, malloc(d->n->Nsignal * sizeof(double)));
     SAFEHMPDF(construct_signalgrid(d->n->Nsignal,
