@@ -175,18 +175,104 @@ static int
 get_DM_IGM(hmpdf_obj *d)
 {   
     STARTFCT
+
     if (strcmp(d->op->DM_IGM_type,"homogeneous")==0.0){
+    
     double XH=1-d->c->YHe; //Hydrogen mass fraction
     double mu_e=d->c->y_H*XH+d->c->y_He*0.5*d->c->YHe;//mean molecular weight per electron, https://arxiv.org/pdf/2208.07847 pg7
     double f_free=(d->c->y_H+d->c->y_He)/2.0; //free electron fraction
+     
+    double *f_IGM;
+    SAFEALLOC(f_IGM,    malloc(d->n->Nz * sizeof(double)));
+    
+    double *f_matter; 
+    SAFEALLOC(f_matter,    malloc(d->n->Nz * sizeof(double)));
+
+    double *mass_halos_e;
+    SAFEALLOC(mass_halos_e, malloc(d->n->Nz * sizeof(double)));
+
+    double *mass_halos_m; 
+    SAFEALLOC(mass_halos_m, malloc(d->n->Nz * sizeof(double)));
+    
+    //total mass in halos
+    for (int z_index=0; z_index<d->n->Nz; z_index++){
+    	mass_halos_e[z_index]=0.0;
+	mass_halos_m[z_index]=0.0; 
+	
+	char buffer_Me[512];
+	sprintf(buffer_Me, "/burg/home/as6131/software/hmpdf/data/Me_z%.8f.bin", d->n->zgrid[z_index]);
+	FILE *fp_Me = fopen(buffer_Me, "w");
+	fwrite(d->n->Mgrid,  sizeof(double), d->n->NM, fp_Me);
+	fwrite(d->p->M_e_halos[z_index],sizeof(double), d->n->NM, fp_Me);
+	fclose(fp_Me);
+
+	for (int M_index=0; M_index<d->n->NM; M_index++){
+	    
+	    mass_halos_e[z_index]+=d->h->hmf[z_index][M_index]*d->p->M_e_halos[z_index][M_index]*d->n->Mweights[M_index];
+	    mass_halos_m[z_index]+=d->h->hmf[z_index][M_index]*d->n->Mgrid[M_index]*d->n->Mweights[M_index];
+	    //printf("z%.18e\n", d->n->zgrid[z_index]);
+	    //printf("M%.18e\n", d->n->Mgrid[M_index]);
+	    //printf("hmf%.18e\n", d->h->hmf[z_index][M_index]); 
+	}	
+	
+	mass_halos_e[z_index]*=d->c->volume_tot[z_index];
+	mass_halos_m[z_index]*=d->c->volume_tot[z_index];
+        //printf("z%.18e\n", d->n->zgrid[z_index]);
+        //printf("mass halos matter %.18e\n", mass_halos_m[z_index]);
+        //printf("mass halos e %.18e\n", mass_halos_e[z_index]); 
+    }
+	
+    //total mass 
+    double *mass_total_e;
+    SAFEALLOC(mass_total_e, malloc(d->n->Nz * sizeof(double)));
+
+    double *mass_total_m;
+    SAFEALLOC(mass_total_m, malloc(d->n->Nz * sizeof(double)));
+
+    for (int z_index=0; z_index<d->n->Nz; z_index++){
+    	
+    	mass_total_e[z_index]=f_free*d->c->rho_c_0*d->c->Ob_0*d->c->volume_tot[z_index];
+	mass_total_m[z_index]=d->c->rho_c_0*d->c->Om_0*d->c->volume_tot[z_index];
+    	
+//	printf("z%.18e\n", d->n->zgrid[z_index]);
+//	printf("mass total matter %.18e\n", mass_total_m[z_index]);
+//	printf("mass total e %.18e\n", mass_total_e[z_index]);
+    }
+
+    //compute fraction not in halos
+    for (int z_index=0; z_index<d->n->Nz; z_index++){
+
+	 f_IGM[z_index]=(mass_total_e[z_index]-mass_halos_e[z_index])/mass_total_e[z_index];
+	 f_matter[z_index]=(mass_total_m[z_index]-mass_halos_m[z_index])/mass_total_m[z_index];
+
+    }
+    
+    //save to files
+    char buffer_f_igm[512];
+    snprintf(buffer_f_igm,sizeof(buffer_f_igm), "/burg/home/as6131/software/hmpdf/data/f_IGM_zmin_%.3f_zmax_%.3f_Mmin_%.3f_Mmax_%.3f_ne_prof.bin", d->n->zmin, d->n->zmax, log10(d->n->Mmin), log10(d->n->Mmax));
+    FILE *fp_igm = fopen(buffer_f_igm, "w");
+    fwrite(d->n->zgrid, sizeof(double), d->n->Nz, fp_igm);
+    fwrite(f_IGM, sizeof(double), d->n->Nz, fp_igm);
+    fclose(fp_igm);
+
+    char buffer_f_matter[512];
+    snprintf(buffer_f_matter, sizeof(buffer_f_matter), "/burg/home/as6131/software/hmpdf/data/f_matter_zmin_%.3f_zmax_%.3f_Mmin_%.3f_Mmax_%.3f.bin", d->n->zmin, d->n->zmax, log10(d->n->Mmin), log10(d->n->Mmax));
+    FILE *fp_matter = fopen(buffer_f_matter, "w");
+    fwrite(d->n->zgrid, sizeof(double), d->n->Nz, fp_matter);
+    fwrite(f_matter, sizeof(double), d->n->Nz, fp_matter);
+    fclose(fp_matter);
+    
+    //now compute DM_IGM
     double prefactors = f_free*d->c->Ob_0 * d->c->rho_c_0/mu_e/M_ATOMIC*M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
-    double ne_IGM=0.0;
-     for (int z_index=0; z_index<d->n->Nz; z_index++)
+    double DM_IGM=0.0;
+    
+    for (int z_index=0; z_index<d->n->Nz; z_index++)
     {   
-        ne_IGM+=d->n->zweights[z_index]/d->c->hubble[z_index]*(1+d->n->zgrid[z_index]);
+        DM_IGM+=f_IGM[z_index]*d->n->zweights[z_index]/d->c->hubble[z_index]*(1+d->n->zgrid[z_index]);
         } 
-    d->op->dm_igm_tot=ne_IGM*prefactors;
+    d->op->dm_igm_tot=DM_IGM*prefactors;
     printf("IGM contribution (homogeneous)%.3f\n:", d->op->dm_igm_tot*1e10); 
+    
     }
     ENDFCT
 }

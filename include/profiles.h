@@ -29,7 +29,7 @@ typedef struct//{{{
     gsl_interp_accel *reci_tgrid_accel;
 
     double ***profiles; // each profile has as zero entry theta out and then the profile
-
+    double **M_e_halos; //total electron mass in halos
     int created_conj_profiles;
     double ***conj_profiles; // each profile has as zero entry the rescaling such that reci_thetagrid -> ell
 
