@@ -535,7 +535,7 @@ sanity_checks(hmpdf_obj *d)
     HMPDFCHECK((d->p->stype==hmpdf_kappa)
                 && ((d->n->zsource < (d->n->zmax-0.001)) || (d->n->zsource > 1200.0)),
                 "Invalid source redshift %g.", d->n->zsource);
-    HMPDFCHECK((d->p->ne_profile != hmpdf_ne_B16) && (d->p->ne_profile != hmpdf_ne_L22_BPL), 
+    HMPDFCHECK((d->p->ne_profile != hmpdf_ne_B16) && (d->p->ne_profile != hmpdf_ne_L22_BPL) && (d->p->ne_profile != hmpdf_ne_NFW), 
                 "Invalid electron density profile %d.", d->p->ne_profile);
     #ifndef _OPENMP
     HMPDFCHECK(d->Ncores>1, "You specified hmpdf_N_threads = %d, "

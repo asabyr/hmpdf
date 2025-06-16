@@ -618,6 +618,54 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     //printf("scaling %.3f\n",scaling);
     
     }
+    
+    else if (d->p->ne_profile==hmpdf_ne_NFW){
+    
+    prof_name="NFW";
+    
+    double rhos, rs;
+    SAFEHMPDF(NFW_fundamental(d, z_index, M_index, mass_resc, NULL, &rhos, &rs));
+    
+    SAFEHMPDF(kappa_profile_1(d, z_index, theta_out, Rout, rhos, rs, p));
+    
+    //normalization 
+    
+    double XH=1-d->c->YHe; 
+    double mu_e=d->c->y_H*XH+d->c->y_He*0.5*d->c->YHe;
+    double f_free=(d->c->y_H+d->c->y_He)/2.0;
+    
+    for (int ii=0; ii<d->p->Ntheta; ii++)
+    {
+        double t = d->p->decr_tgrid[ii] * theta_out;
+        double Rproj = tan(t) * d->c->angular_diameter[z_index];
+        double lout = sqrt(Rout*Rout - Rproj*Rproj);
+
+        p[ii] -= 2.0 * lout * d->c->Ob_0/d->c->Om_0;
+        p[ii] *= f_free/mu_e/M_ATOMIC*M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
+    }
+    
+    
+    d->p->M_e_halos[z_index][M_index]=f_free*d->c->Ob_0/d->c->Om_0*4*M_PI*rhos*pow(rs,3.0)*(log(1+Rout/rs)-Rout/(rs+Rout));
+    
+    #ifdef SAVE_PROF
+    double P3D[d->p->Ntheta];
+    for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++){
+        double r = d->p->decr_tgrid[ii] *Rout;
+        P3D[ii-1]=f_free*d->c->Ob_0/d->c->Om_0*rhos/(r/rs)/pow(1+r/rs, 2.0);
+        }
+    
+    char buffer[512];
+    sprintf(buffer, "/scratch/07833/tg871330/software_scratch/hmpdf/profiles/profile3D_NFW_%s_%.8f_%.8f.bin", prof_name, d->n->zgrid[z_index], M200c);
+    FILE *fp = fopen(buffer, "w");
+    fwrite(&Rout,sizeof(double),1,fp);
+    fwrite(d->p->decr_tgrid+1,sizeof(double),d->p->Ntheta, fp);
+    fwrite(P3D, sizeof(double), d->p->Ntheta, fp);
+    fclose(fp);
+    
+    #endif
+     
+    }
+
     else
     {
         HMPDFERR("unkown electron density profile.");
@@ -638,9 +686,10 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     //double xc_L22 = Leemodel_BPL_density_primitive(d, M200c, d->n->zgrid[z_index], 1);
     //double scaling_L22=2.0 * ne0_L22 * xc_L22 * 200.0 * d->c->rho_c[z_index]* d->c->Ob_0/d->c->Om_0 * R200c/XH_L22/MPROTON*M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10); 
     for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++){
-        double x = d->p->decr_tgrid[ii] *d->p->rout_scale;
+        double x = d->p->decr_tgrid[ii] *Rout*xc;
         //P3D[ii-1]=scaling/scaling_L22*rho0*pow(x/xc, par.gamma_dens)*pow(1.0+pow(x/xc,par.alpha_dens),-(par.beta_dens+par.gamma_dens)/par.alpha_dens);
-        P3D[ii-1]=rho0*pow(x/xc, par.gamma_dens)*pow(1.0+pow(x/xc,par.alpha_dens),-(par.beta_dens-par.gamma_dens)/par.alpha_dens);
+        //P3D[ii-1]=rho0*pow(x/xc, par.gamma_dens)*pow(1.0+pow(x/xc,par.alpha_dens),-(par.beta_dens-par.gamma_dens)/par.alpha_dens);
+        P3D[ii-1]=scaling_3D/4*M_PI*pow(x/xc, par.gamma_dens)*pow(1.0+pow(x/xc,par.alpha_dens),-(par.beta_dens-par.gamma_dens)/par.alpha_dens);
         }
     
     }
@@ -653,21 +702,20 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
         }
     
     }
-    else
-    {
-        HMPDFERR("unkown electron density profile.");
-    }
-
+    
+    
+    
+    double out_scale=Rout*xc*R200c;
     char buffer[512];
     sprintf(buffer, "/scratch/07833/tg871330/software_scratch/hmpdf/profiles/profile3D_%s_%.8f_%.8f.bin", prof_name, d->n->zgrid[z_index], M200c);
     FILE *fp = fopen(buffer, "w");
-    fwrite(&d->p->rout_scale,sizeof(double),1,fp);
+    fwrite(&out_scale,sizeof(double),1,fp);
     fwrite(d->p->decr_tgrid+1,sizeof(double),d->p->Ntheta, fp);
     fwrite(P3D, sizeof(double), d->p->Ntheta, fp);
     fclose(fp);
     #endif
     
-
+    if (d->p->ne_profile==hmpdf_ne_B16 || d->p->ne_profile==hmpdf_ne_L22_BPL){
     // loop over angles
     for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++)
     {
@@ -688,7 +736,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     }
     
     gsl_integration_workspace_free(ws);
-
+    
     //integrate 3D profiles to get total electron mass in each halo
     //printf("M200c %.18e\n", M200c);
     //printf("z %.18e\n",d->n->zgrid[z_index]);
@@ -705,6 +753,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     //printf("int result %.18e\n", rho0*d->p->M_e_halos[z_index][M_index]); 
     d->p->M_e_halos[z_index][M_index]*=scaling_3D;
     gsl_integration_workspace_free(ws_3D);
+    }
     
     ENDFCT
 }

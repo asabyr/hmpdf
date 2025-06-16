@@ -33,6 +33,7 @@ typedef enum
 {
 hmpdf_ne_B16,
 hmpdf_ne_L22_BPL,
+hmpdf_ne_NFW,
 } hmpdf_ne_profile_e;
 
 /*! Fixed point integration modes.
