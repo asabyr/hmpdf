@@ -305,6 +305,8 @@ init_params(hmpdf_obj *d, param *p)
             d->p->Lee22_BPL_params, dptr_type, def.Lee22_BPL_p);
     INIT_P_B(hmpdf_ne_profile,
              d->p->ne_profile, ne_type, def.ne_prof);
+    INIT_P(hmpdf_adjust_Rout, 
+           d->p->adj_Rout, int_type, def.adjust_Rout);
     INIT_P(hmpdf_noise_pwr,
            d->ns->noise_pwr, np_type, def.noise_pwr);
     INIT_P(hmpdf_noise_pwr_params,

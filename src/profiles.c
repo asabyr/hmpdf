@@ -503,11 +503,10 @@ Battmodel_density_integrand(double z, void *params)
 }
 
 static double 
-Battmodel_density_integrand_3D(double r, void *params)
+Battmodel_density_integrand_3D(double x_over_xc, void *params)
 {   
-    density_params *p = (density_params *)params; 
-    double x_over_xc=r/p->R200c_dens/p->xc_dens; 
-    return pow(r, 2.0)*pow(x_over_xc, p->gamma_dens)*pow(1.0+pow(x_over_xc, p->alpha_dens),-(p->beta_dens+p->gamma_dens)/p->alpha_dens);
+    density_params *p = (density_params *)params;  
+    return p->R200c_dens*p->xc_dens*pow(x_over_xc*p->R200c_dens*p->xc_dens, 2.0)*pow(x_over_xc, p->gamma_dens)*pow(1.0+pow(x_over_xc, p->alpha_dens),-(p->beta_dens+p->gamma_dens)/p->alpha_dens);
 }
 
 //Lee density profiles
@@ -545,6 +544,160 @@ Leemodel_density_integrand(double z, void *params)
     return pow(r, p->gamma_dens)*pow(1.0+pow(r, p->alpha_dens), -p->beta_dens);
 }
 
+
+// static int
+// electron_mass_tot(gsl_function *gsl_func, double Rmax,double *Me)
+// {   
+//     STARTFCT 
+//     gsl_integration_workspace *ws_3D;
+//     SAFEALLOC(ws_3D, gsl_integration_workspace_alloc(BATTINTEGR_LIMIT));
+//     double err_3D;
+//     SAFEGSL(gsl_integration_qag(gsl_func, 0.0, Rmax,
+//                                 0.0, BATTINTEGR_EPSREL,
+//                                BATTINTEGR_LIMIT, BATTINTEGR_KEY,
+//                                 ws_3D, Me, &err_3D));
+//     gsl_integration_workspace_free(ws_3D);
+    
+//    ENDFCT
+    //return *Me*scaling;
+
+//}
+
+static int
+electron_mass_res(gsl_function *gsl_func, double Rmax, double Mnfw, double scaling_3D, double *Mres)
+{   
+    STARTFCT
+    double Me; 
+    gsl_integration_workspace *ws_3D;
+    SAFEALLOC(ws_3D, gsl_integration_workspace_alloc(BATTINTEGR_LIMIT));
+    double err_3D;
+    SAFEGSL(gsl_integration_qag(gsl_func, 0.0, Rmax,
+                                0.0, BATTINTEGR_EPSREL,
+                               BATTINTEGR_LIMIT, BATTINTEGR_KEY,
+                                ws_3D, &Me, &err_3D));
+    gsl_integration_workspace_free(ws_3D);
+    
+    *Mres = Me*scaling_3D-Mnfw;
+    ENDFCT
+}
+
+
+static double 
+brent(gsl_function *gsl_func, double x1, double x2, double tol, double fa, double fb, double *result, double scaling_3D, double Mnfw)
+
+    
+{   STARTFCT
+    //x1 and x2 are the initial Rout interval values
+    
+    //number of iterations
+    int j; 
+    int jmax=1000; 
+    
+    //various variables
+    double a, b, c, d, e, min1, min2, fc, p, q, r, tol1, s, xm, EPS2;
+
+    EPS2=3.e-6;//tolerance
+    
+    //initialize
+    a=x1;
+    b=x2;   
+    
+    //initial residuals
+    electron_mass_res(gsl_func, a, Mnfw, scaling_3D, &fa);
+    electron_mass_res(gsl_func, b, Mnfw, scaling_3D, &fb);
+    
+    
+    if (fb*fa>0.0){
+         HMPDFERR("Error in the initial Rout choices for Brent method");
+        }
+    
+    fc=fb; 
+    
+
+    //iterate
+    for (j=1; j<=jmax; j++){
+        
+        if ((fb)*(fc) > 0.0){
+            //start by setting c=a
+            c=a; 
+            fc=fa; 
+            e=d=b-a;// this is the difference we will be compared to tolerance}
+        }
+         
+        if (fabs(fc) < fabs(fb)){
+            //exchange if needed
+            a=b;
+            b=c;
+            c=a;
+            fa=fb;
+            fb=fc;
+            fc=fa; 
+            }
+        
+        tol1=2.0*(EPS2)*fabs(b)+0.5*tol;
+        xm=0.5*(c-b);
+
+        if (fabs(xm) <= tol1||fb==0.0){
+            *result = b;
+            printf("success brent\n");
+            return 1; 
+            //found root, exit
+        }
+        
+        if (fabs(e) >= tol1 && fabs(fa) > fabs(fb)){
+            
+            s=fb/fa;
+            if (a==c){
+            p=2.0*(xm)*(s);
+            q=1.0-s;
+            }
+            else{
+            q=fa/fc; 
+            r=fb/fc;
+            p=s*(2.0*(xm)*(q)*(q-r)-(b-a)*(r-1.0));
+            q=(q-1.0)*(r-1.0)*(s-1.0);
+            }
+            if (p > 0.0)  q = -q;
+            
+            p=fabs(p);
+            min1=3.0*(xm)*(q)-fabs(tol1*(q));
+            min2=fabs(e*(q));
+            
+            if (2.0*(p) < (min1 < min2 ? min1 : min2))
+            {
+                e=d;
+                d=p/q;
+            }
+            else {
+                d=xm;
+                e=d;
+            }
+            }
+            else {
+                d=xm;
+                e=d;
+            }
+            a=b;
+            fa=fb;
+            
+            if (fabs(d) > tol1){
+              b += d;}
+            else{
+              b += (xm > 0.0 ? fabs(tol1) : -fabs(tol1));
+            }
+            
+            electron_mass_res(gsl_func, b, Mnfw, scaling_3D, &fb);
+            
+            }
+    
+            HMPDFERR("Max iterations reached in brent method\n");
+        
+        return 0;
+        ENDFCT
+}   
+
+
+
 static int
 electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
             double mass_resc,
@@ -567,7 +720,13 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     char *prof_name; 
     double ne0;
     double rho0;
- 
+    
+    double rhos_nfw, rs_nfw;
+    SAFEHMPDF(NFW_fundamental(d, z_index, M_index, mass_resc, NULL, &rhos_nfw, &rs_nfw));
+
+    SAFEHMPDF(kappa_profile_1(d, z_index, theta_out, Rout, rhos_nfw, rs_nfw, p));
+
+    
     if (d->p->ne_profile==hmpdf_ne_B16){
     
     prof_name="B16";
@@ -623,10 +782,10 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     
     prof_name="NFW";
     
-    double rhos, rs;
-    SAFEHMPDF(NFW_fundamental(d, z_index, M_index, mass_resc, NULL, &rhos, &rs));
+   // double rhos_nfw, rs_nfw;
+   // SAFEHMPDF(NFW_fundamental(d, z_index, M_index, mass_resc, NULL, &rhos_nfw, &rs_nfw));
     
-    SAFEHMPDF(kappa_profile_1(d, z_index, theta_out, Rout, rhos, rs, p));
+   // SAFEHMPDF(kappa_profile_1(d, z_index, theta_out, Rout, rhos_nfw, rs_nfw, p));
     
     //normalization 
     
@@ -645,13 +804,13 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     }
     
     
-    d->p->M_e_halos[z_index][M_index]=f_free*d->c->Ob_0/d->c->Om_0*4*M_PI*rhos*pow(rs,3.0)*(log(1+Rout/rs)-Rout/(rs+Rout));
+    d->p->M_e_halos[z_index][M_index]=f_free*d->c->Ob_0/d->c->Om_0*4*M_PI*rhos_nfw*pow(rs_nfw,3.0)*(log(1+Rout/rs_nfw)-Rout/(rs_nfw+Rout));
     
     #ifdef SAVE_PROF
     double P3D[d->p->Ntheta];
     for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++){
         double r = d->p->decr_tgrid[ii] *Rout;
-        P3D[ii-1]=f_free*d->c->Ob_0/d->c->Om_0*rhos/(r/rs)/pow(1+r/rs, 2.0);
+        P3D[ii-1]=f_free*d->c->Ob_0/d->c->Om_0*rhos_nfw/(r/rs_nfw)/pow(1+r/rs_nfw, 2.0);
         }
     
     char buffer[512];
@@ -716,6 +875,69 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     #endif
     
     if (d->p->ne_profile==hmpdf_ne_B16 || d->p->ne_profile==hmpdf_ne_L22_BPL){
+    
+    if (d->p->adj_Rout>0){
+
+        //printf("Rout %.3f", Rout);
+        //find the Rout range
+        double R1, R2;
+        int n_Rout=50;
+        double *Rout_test; 
+        double Mres;
+        double  fa;
+        double  fb;
+        
+        SAFEALLOC(Rout_test, malloc(n_Rout * sizeof(double )));
+        Rout_test[0]=Rout;
+        
+        //compute residual mass
+        
+        double Mgas_NFW = d->c->Ob_0/d->c->Om_0*4*M_PI*rhos_nfw*pow(rs_nfw,3.0)*(log(1+Rout_test[0]*R200c*xc/rs_nfw)-Rout_test[0]*R200c*xc/(rs_nfw+Rout_test[0]*R200c*xc));       
+        printf("Mgas_NFWi %.18e \n", Mgas_NFW/(d->c->Ob_0/d->c->Om_0));
+        electron_mass_res(&integrand_3D, Rout_test[0], Mgas_NFW, scaling_3D, &Mres);
+ 
+        //if mass < NFW, then we need to extend Rout
+        if (Mres<=0.0){
+            
+           for (int i=1; i<n_Rout; i++){
+             
+               Rout_test[i]=2.0*Rout_test[i-1];
+               electron_mass_res(&integrand_3D,Rout_test[i],Mgas_NFW, scaling_3D, &Mres);
+
+            if (Mres>0.0){
+                R1=Rout_test[i];
+                R2=Rout_test[i-1];
+                break;
+                }
+            
+            }
+            
+        }else{
+                
+            for (int i=1; i<n_Rout; i++){
+                
+                Rout_test[i]=Rout_test[i-1]/2.0;
+                electron_mass_res(&integrand_3D,Rout_test[i],Mgas_NFW, scaling_3D, &Mres);
+ 
+            if (Mres<0.0){
+                R1=Rout_test[i];
+                R2=Rout_test[i-1];
+                break;
+                }
+            
+            }
+        }
+        
+        // now we have Rmin and Rmax which define the interval to determine Rout
+        double Rmin=fmin(R1, R2);
+        double Rmax=fmax(R1, R2);
+        
+        //printf("determined initial range");
+
+        int brent_return=brent(&integrand_3D, R1, R2, 1e-2, fa, fb, &Rout, scaling_3D, Mgas_NFW);
+        
+        //printf("Rout %.3f", Rout);
+    }
     // loop over angles
     for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++)
     {

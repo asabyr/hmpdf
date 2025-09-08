@@ -473,7 +473,8 @@ typedef enum
                                    */
     hmpdf_Battaglia16_density_params,
     hmpdf_Lee22_BPL_density_params,
-    hmpdf_ne_profile, 
+    hmpdf_ne_profile,
+    hmpdf_adjust_Rout, 
     hmpdf_noise_pwr, /*!< Option to add pixel-wise Gaussian noise with this power spectrum.
                       *   \par
                       *   Type: #hmpdf_noise_pwr_f. Default: None.

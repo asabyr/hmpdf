@@ -16,6 +16,7 @@ typedef struct//{{{
 
     hmpdf_signaltype_e stype;
     int ne_profile;
+    int adj_Rout;
     double rout_scale;
     int rout_def;
     int Ntheta;
