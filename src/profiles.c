@@ -747,7 +747,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     double XH=1-d->c->YHe; //Hydrogen mass fraction
     double mu_e=d->c->y_H*XH+d->c->y_He*0.5*d->c->YHe;//mean molecular weight per electron, https://arxiv.org/pdf/2208.07847 pg7
     double f_free=(d->c->y_H+d->c->y_He)/2.0; //free electron fraction
-    scaling = f_free*2.0*rho0 * xc * d->c->rho_c[z_index] * d->c->Ob_0/d->c->Om_0/M_ATOMIC/mu_e * R200c * M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
+    scaling = 1.0/(1.0+d->n->zgrid[z_index])*f_free*2.0*rho0 * xc * d->c->rho_c[z_index] * d->c->Ob_0/d->c->Om_0/M_ATOMIC/mu_e * R200c * M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
     scaling_3D = 4*M_PI*rho0*d->c->rho_c[z_index]*d->c->Ob_0/d->c->Om_0*f_free; 
     //printf("z%.18e\n",d->n->zgrid[z_index]);
     //printf("rhoc%.18e\n", d->c->rho_c[z_index]);
