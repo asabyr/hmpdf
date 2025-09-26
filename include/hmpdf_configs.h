@@ -34,6 +34,7 @@ typedef enum
 hmpdf_ne_B16,
 hmpdf_ne_L22_BPL,
 hmpdf_ne_NFW,
+hmpdf_ne_TNG,
 } hmpdf_ne_profile_e;
 
 /*! Fixed point integration modes.
@@ -473,6 +474,7 @@ typedef enum
                                    */
     hmpdf_Battaglia16_density_params,
     hmpdf_Lee22_BPL_density_params,
+    hmpdf_TNG_density_params,
     hmpdf_ne_profile,
     hmpdf_adjust_Rout, 
     hmpdf_noise_pwr, /*!< Option to add pixel-wise Gaussian noise with this power spectrum.

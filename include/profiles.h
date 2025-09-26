@@ -13,6 +13,7 @@ typedef struct//{{{
     double *Battaglia12_params;
     double *Battaglia16_params;
     double *Lee22_BPL_params;
+    double *TNG_params; 
 
     hmpdf_signaltype_e stype;
     int ne_profile;

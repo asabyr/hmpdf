@@ -303,6 +303,8 @@ init_params(hmpdf_obj *d, param *p)
             d->p->Battaglia16_params, dptr_type,def.Battaglia16_p);
     INIT_P(hmpdf_Lee22_BPL_density_params,
             d->p->Lee22_BPL_params, dptr_type, def.Lee22_BPL_p);
+    INIT_P(hmpdf_TNG_density_params,
+            d->p->TNG_params, dptr_type,def.TNG_p);
     INIT_P_B(hmpdf_ne_profile,
              d->p->ne_profile, ne_type, def.ne_prof);
     INIT_P(hmpdf_adjust_Rout, 
@@ -537,7 +539,7 @@ sanity_checks(hmpdf_obj *d)
     HMPDFCHECK((d->p->stype==hmpdf_kappa)
                 && ((d->n->zsource < (d->n->zmax-0.001)) || (d->n->zsource > 1200.0)),
                 "Invalid source redshift %g.", d->n->zsource);
-    HMPDFCHECK((d->p->ne_profile != hmpdf_ne_B16) && (d->p->ne_profile != hmpdf_ne_L22_BPL) && (d->p->ne_profile != hmpdf_ne_NFW), 
+    HMPDFCHECK((d->p->ne_profile != hmpdf_ne_B16) && (d->p->ne_profile != hmpdf_ne_L22_BPL) && (d->p->ne_profile != hmpdf_ne_NFW) && (d->p->ne_profile != hmpdf_ne_TNG), 
                 "Invalid electron density profile %d.", d->p->ne_profile);
     #ifndef _OPENMP
     HMPDFCHECK(d->Ncores>1, "You specified hmpdf_N_threads = %d, "

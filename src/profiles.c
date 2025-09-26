@@ -509,6 +509,38 @@ Battmodel_density_integrand_3D(double x_over_xc, void *params)
     return p->R200c_dens*p->xc_dens*pow(x_over_xc*p->R200c_dens*p->xc_dens, 2.0)*pow(x_over_xc, p->gamma_dens)*pow(1.0+pow(x_over_xc, p->alpha_dens),-(p->beta_dens+p->gamma_dens)/p->alpha_dens);
 }
 
+// IllustrisTNG density profiles 
+static double 
+TNG_density_primitive(hmpdf_obj *d, double M200c, double z, int n)
+{
+    return d->p->TNG_params[n*3+0]
+            *pow(M200c/1e14, d->p->TNG_params[n*3+1])
+            *pow(1.0+z,d->p->TNG_params[n*3+2]);
+}
+
+static double
+TNG_density_integrand(double z, void *params)
+{
+    density_params *p = (density_params *)params; 
+    double r = hypot(z, p->rproj_dens); 
+    return pow(r, p->gamma_dens)*pow(1.0+pow(r, p->alpha_dens), -p->beta_dens);
+}
+
+static double
+TNG_density_integrand_3D(double x_over_xc, void *params)
+{
+    density_params *p = (density_params *)params; 
+    return p->R200c_dens*p->xc_dens*pow(x_over_xc*p->R200c_dens*p->xc_dens, 2.0)*pow(x_over_xc, p->gamma_dens)*pow(1.0+pow(x_over_xc, p->alpha_dens), -p->beta_dens);
+}
+
+static double 
+NFW_density_integrand(double z, void *params)
+{
+    density_params *p = (density_params *)params;
+    double r = hypot(z, p->rproj_dens);
+    return pow(r, -1.0)*pow(1.0+r, -2.0);
+}
+
 //Lee density profiles
 static inline double
 Leemodel_BPL_density_primitive(hmpdf_obj *d, double M200c, double z,  int n)
@@ -724,7 +756,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     double rhos_nfw, rs_nfw;
     SAFEHMPDF(NFW_fundamental(d, z_index, M_index, mass_resc, NULL, &rhos_nfw, &rs_nfw));
 
-    SAFEHMPDF(kappa_profile_1(d, z_index, theta_out, Rout, rhos_nfw, rs_nfw, p));
+    //SAFEHMPDF(kappa_profile_1(d, z_index, theta_out, Rout, rhos_nfw, rs_nfw, p));
 
     
     if (d->p->ne_profile==hmpdf_ne_B16){
@@ -777,33 +809,64 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     //printf("scaling %.3f\n",scaling);
     
     }
+    else if (d->p->ne_profile==hmpdf_ne_TNG){
     
+    prof_name="TNG"; 
+    ne0=TNG_density_primitive(d, M200c, d->n->zgrid[z_index], 0);
+    xc=TNG_density_primitive(d, M200c, d->n->zgrid[z_index], 1);
+    
+    par.alpha_dens = TNG_density_primitive(d, M200c, d->n->zgrid[z_index], 2);
+    par.beta_dens = TNG_density_primitive(d, M200c, d->n->zgrid[z_index], 3);
+    par.gamma_dens = TNG_density_primitive(d, M200c, d->n->zgrid[z_index], 4);
+    par.xc_dens = TNG_density_primitive(d, M200c, d->n->zgrid[z_index], 1);
+    par.R200c_dens = R200c;
+
+    integrand.function = &TNG_density_integrand;
+    integrand_3D.function = &TNG_density_integrand_3D;    
+
+    double XH = 0.76; //Hydrogen mass fraction
+    scaling = 1.0/(1.0+d->n->zgrid[z_index])*2.0*ne0*xc*200.0/(XH*MPROTON)*d->c->rho_c[z_index]*M_SOLAR_KG*d->c->Ob_0/d->c->Om_0*R200c*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
+    scaling_3D = 4*M_PI*ne0*d->c->rho_c[z_index]*d->c->Ob_0/d->c->Om_0;
+    
+    }
     else if (d->p->ne_profile==hmpdf_ne_NFW){
     
     prof_name="NFW";
-    
-   // double rhos_nfw, rs_nfw;
-   // SAFEHMPDF(NFW_fundamental(d, z_index, M_index, mass_resc, NULL, &rhos_nfw, &rs_nfw));
-    
-   // SAFEHMPDF(kappa_profile_1(d, z_index, theta_out, Rout, rhos_nfw, rs_nfw, p));
-    
-    //normalization 
-    
+     
     double XH=1-d->c->YHe; 
     double mu_e=d->c->y_H*XH+d->c->y_He*0.5*d->c->YHe;
     double f_free=(d->c->y_H+d->c->y_He)/2.0;
     
-    for (int ii=0; ii<d->p->Ntheta; ii++)
+    integrand.params = &par;
+    gsl_integration_workspace *ws;
+    SAFEALLOC(ws, gsl_integration_workspace_alloc(BATTINTEGR_LIMIT));
+
+    Rout /= rs_nfw;
+    
+    scaling = rs_nfw*rhos_nfw*2.0*d->c->Ob_0/d->c->Om_0*f_free/mu_e/M_ATOMIC*M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
+ 
+    integrand.function=&NFW_density_integrand;
+     
+    for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++)
     {
         double t = d->p->decr_tgrid[ii] * theta_out;
-        double Rproj = tan(t) * d->c->angular_diameter[z_index];
-        double lout = sqrt(Rout*Rout - Rproj*Rproj);
+        par.rproj_dens = tan(t) * d->c->angular_diameter[z_index]/rs_nfw;
+        double lout = sqrt(Rout*Rout - par.rproj_dens*par.rproj_dens);
 
-        p[ii] -= 2.0 * lout * d->c->Ob_0/d->c->Om_0;
-        p[ii] *= f_free/mu_e/M_ATOMIC*M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
+        double err;
+        SAFEGSL(gsl_integration_qag(&integrand, 0.0, lout,
+                                    BATTINTEGR_EPSABS
+                                    * (d->n->signalgrid[1]-d->n->signalgrid[0]) / scaling,
+                                    BATTINTEGR_EPSREL,
+                                    BATTINTEGR_LIMIT, BATTINTEGR_KEY,
+                                    ws, p+ii, &err));
+        
+        // normalize
+        p[ii] *= scaling;
     }
     
-    
+    gsl_integration_workspace_free(ws);
+
     d->p->M_e_halos[z_index][M_index]=f_free*d->c->Ob_0/d->c->Om_0*4*M_PI*rhos_nfw*pow(rs_nfw,3.0)*(log(1+Rout/rs_nfw)-Rout/(rs_nfw+Rout));
     
     #ifdef SAVE_PROF
@@ -829,52 +892,58 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     {
         HMPDFERR("unkown electron density profile.");
     }
-
-    Rout /= R200c * xc; 
-    integrand.params = &par;
-    integrand_3D.params = &par; 
-    gsl_integration_workspace *ws;
-    SAFEALLOC(ws, gsl_integration_workspace_alloc(BATTINTEGR_LIMIT));
+    
+    
+    //Rout /= R200c * xc; 
+    //integrand.params = &par;
+    //integrand_3D.params = &par; 
+    //gsl_integration_workspace *ws;
+    //SAFEALLOC(ws, gsl_integration_workspace_alloc(BATTINTEGR_LIMIT));
      
     #ifdef SAVE_PROF
     //just saves 3D
-    double P3D[d->p->Ntheta];
-    if (d->p->ne_profile==hmpdf_ne_B16){
+    //double P3D[d->p->Ntheta];
+    //if (d->p->ne_profile==hmpdf_ne_B16){
     //double XH_L22=1-d->c->YHe;
     //double ne0_L22 = Leemodel_density_primitive(d, M200c, d->n->zgrid[z_index], 0);
     //double xc_L22 = Leemodel_BPL_density_primitive(d, M200c, d->n->zgrid[z_index], 1);
     //double scaling_L22=2.0 * ne0_L22 * xc_L22 * 200.0 * d->c->rho_c[z_index]* d->c->Ob_0/d->c->Om_0 * R200c/XH_L22/MPROTON*M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10); 
-    for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++){
-        double x = d->p->decr_tgrid[ii] *Rout*xc;
+    //for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++){
+     //   double x = d->p->decr_tgrid[ii] *Rout*xc;
         //P3D[ii-1]=scaling/scaling_L22*rho0*pow(x/xc, par.gamma_dens)*pow(1.0+pow(x/xc,par.alpha_dens),-(par.beta_dens+par.gamma_dens)/par.alpha_dens);
         //P3D[ii-1]=rho0*pow(x/xc, par.gamma_dens)*pow(1.0+pow(x/xc,par.alpha_dens),-(par.beta_dens-par.gamma_dens)/par.alpha_dens);
-        P3D[ii-1]=scaling_3D/4*M_PI*pow(x/xc, par.gamma_dens)*pow(1.0+pow(x/xc,par.alpha_dens),-(par.beta_dens-par.gamma_dens)/par.alpha_dens);
-        }
+     //   P3D[ii-1]=scaling_3D/4*M_PI*pow(x/xc, par.gamma_dens)*pow(1.0+pow(x/xc,par.alpha_dens),-(par.beta_dens-par.gamma_dens)/par.alpha_dens);
+      //  }
     
-    }
+    //}
     
-    else if (d->p->ne_profile==hmpdf_ne_L22_BPL){
+    //else if (d->p->ne_profile==hmpdf_ne_L22_BPL){
     
-    for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++){
-        double x = d->p->decr_tgrid[ii] *d->p->rout_scale;
-        P3D[ii-1]=ne0*pow(x/xc, par.gamma_dens)*pow(1.0+pow(x/xc,par.alpha_dens),-par.beta_dens);
-        }
-    
-    }
-    
+    //for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++){
+    //    double x = d->p->decr_tgrid[ii] *d->p->rout_scale;
+    //    P3D[ii-1]=ne0*pow(x/xc, par.gamma_dens)*pow(1.0+pow(x/xc,par.alpha_dens),-par.beta_dens);
+    //    }
+    //}
     
     
-    double out_scale=Rout*xc*R200c;
-    char buffer[512];
-    sprintf(buffer, "/scratch/07833/tg871330/software_scratch/hmpdf/profiles/profile3D_%s_%.8f_%.8f.bin", prof_name, d->n->zgrid[z_index], M200c);
-    FILE *fp = fopen(buffer, "w");
-    fwrite(&out_scale,sizeof(double),1,fp);
-    fwrite(d->p->decr_tgrid+1,sizeof(double),d->p->Ntheta, fp);
-    fwrite(P3D, sizeof(double), d->p->Ntheta, fp);
-    fclose(fp);
+    
+    //double out_scale=Rout*xc*R200c;
+    //char buffer[512];
+    //sprintf(buffer, "/scratch/07833/tg871330/software_scratch/hmpdf/profiles/profile3D_%s_%.8f_%.8f.bin", prof_name, d->n->zgrid[z_index], M200c);
+    //FILE *fp = fopen(buffer, "w");
+    //fwrite(&out_scale,sizeof(double),1,fp);
+    //fwrite(d->p->decr_tgrid+1,sizeof(double),d->p->Ntheta, fp);
+    //fwrite(P3D, sizeof(double), d->p->Ntheta, fp);
+    //fclose(fp);
     #endif
     
-    if (d->p->ne_profile==hmpdf_ne_B16 || d->p->ne_profile==hmpdf_ne_L22_BPL){
+    if (d->p->ne_profile==hmpdf_ne_B16 || d->p->ne_profile==hmpdf_ne_L22_BPL || d->p->ne_profile==hmpdf_ne_TNG){
+    
+    Rout /= R200c * xc;
+    integrand.params = &par;
+    integrand_3D.params = &par;
+    gsl_integration_workspace *ws;
+    SAFEALLOC(ws, gsl_integration_workspace_alloc(BATTINTEGR_LIMIT));
     
     if (d->p->adj_Rout>0){
 
@@ -938,6 +1007,8 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
         
         //printf("Rout %.3f", Rout);
     }
+
+    //project profiles
     // loop over angles
     for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++)
     {
@@ -960,8 +1031,9 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     gsl_integration_workspace_free(ws);
     
     //integrate 3D profiles to get total electron mass in each halo
-    //printf("M200c %.18e\n", M200c);
-    //printf("z %.18e\n",d->n->zgrid[z_index]);
+    printf("M200m %.18e\n", d->n->Mgrid[M_index]);
+    printf("M200c %.18e\n", M200c);
+    printf("z %.18f\n",d->n->zgrid[z_index]);
     //printf("R200c %.18e\n", R200c);
     //printf("Rout %.18e\n", Rout);
 
@@ -974,6 +1046,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
                                 ws_3D, d->p->M_e_halos[z_index]+M_index, &err_3D));
     //printf("int result %.18e\n", rho0*d->p->M_e_halos[z_index][M_index]); 
     d->p->M_e_halos[z_index][M_index]*=scaling_3D;
+    printf("electron mass in a halo %.18e\n",d->p->M_e_halos[z_index][M_index]);
     gsl_integration_workspace_free(ws_3D);
     }
     
