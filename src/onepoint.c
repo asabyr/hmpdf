@@ -197,10 +197,10 @@ get_DM_IGM(hmpdf_obj *d)
     //total mass in halos
     for (int z_index=0; z_index<d->n->Nz; z_index++){
     	mass_halos_e[z_index]=0.0;
-	mass_halos_m[z_index]=0.0; 
+	    mass_halos_m[z_index]=0.0; 
 	
 	char buffer_Me[512];
-	sprintf(buffer_Me, "/burg/home/as6131/software/hmpdf/data/Me_z%.8f.bin", d->n->zgrid[z_index]);
+	sprintf(buffer_Me, "/scratch/07833/tg871330/software_scratch/hmpdf/data/Me_z%.8f.bin", d->n->zgrid[z_index]);
 	FILE *fp_Me = fopen(buffer_Me, "w");
 	fwrite(d->n->Mgrid,  sizeof(double), d->n->NM, fp_Me);
 	fwrite(d->p->M_e_halos[z_index],sizeof(double), d->n->NM, fp_Me);
@@ -214,10 +214,11 @@ get_DM_IGM(hmpdf_obj *d)
 	    //printf("M%.18e\n", d->n->Mgrid[M_index]);
 	    //printf("hmf%.18e\n", d->h->hmf[z_index][M_index]); 
 	}	
-	
+	printf("z%.18f\n", d->n->zgrid[z_index]);
+    printf("mass halos matter %.18e\n", mass_halos_m[z_index]);
 	mass_halos_e[z_index]*=d->c->volume_tot[z_index];
 	mass_halos_m[z_index]*=d->c->volume_tot[z_index];
-        //printf("z%.18e\n", d->n->zgrid[z_index]);
+        //printf("z%.18f\n", d->n->zgrid[z_index]);
         //printf("mass halos matter %.18e\n", mass_halos_m[z_index]);
         //printf("mass halos e %.18e\n", mass_halos_e[z_index]); 
     }
@@ -232,11 +233,11 @@ get_DM_IGM(hmpdf_obj *d)
     for (int z_index=0; z_index<d->n->Nz; z_index++){
     	
     	mass_total_e[z_index]=f_free*d->c->rho_c_0*d->c->Ob_0*d->c->volume_tot[z_index];
-	mass_total_m[z_index]=d->c->rho_c_0*d->c->Om_0*d->c->volume_tot[z_index];
+	    mass_total_m[z_index]=d->c->rho_c_0*d->c->Om_0*d->c->volume_tot[z_index];
     	
-//	printf("z%.18e\n", d->n->zgrid[z_index]);
-//	printf("mass total matter %.18e\n", mass_total_m[z_index]);
-//	printf("mass total e %.18e\n", mass_total_e[z_index]);
+	//printf("z%.18e\n", d->n->zgrid[z_index]);
+	//printf("mass total matter %.18e\n", mass_total_m[z_index]);
+	//printf("mass total e %.18e\n", mass_total_e[z_index]);
     }
 
     //compute fraction not in halos
@@ -249,14 +250,14 @@ get_DM_IGM(hmpdf_obj *d)
     
     //save to files
     char buffer_f_igm[512];
-    snprintf(buffer_f_igm,sizeof(buffer_f_igm), "/burg/home/as6131/software/hmpdf/data/f_IGM_zmin_%.3f_zmax_%.3f_Mmin_%.3f_Mmax_%.3f_ne_prof.bin", d->n->zmin, d->n->zmax, log10(d->n->Mmin), log10(d->n->Mmax));
+    snprintf(buffer_f_igm,sizeof(buffer_f_igm), "/scratch/07833/tg871330/software_scratch/hmpdf/data/f_IGM_zmin_%.3f_zmax_%.3f_Mmin_%.3f_Mmax_%.3f_ne_prof_Nz_%d_NM_%d.bin", d->n->zmin, d->n->zmax, log10(d->n->Mmin), log10(d->n->Mmax), d->n->Nz, d->n->NM);
     FILE *fp_igm = fopen(buffer_f_igm, "w");
     fwrite(d->n->zgrid, sizeof(double), d->n->Nz, fp_igm);
     fwrite(f_IGM, sizeof(double), d->n->Nz, fp_igm);
     fclose(fp_igm);
 
     char buffer_f_matter[512];
-    snprintf(buffer_f_matter, sizeof(buffer_f_matter), "/burg/home/as6131/software/hmpdf/data/f_matter_zmin_%.3f_zmax_%.3f_Mmin_%.3f_Mmax_%.3f.bin", d->n->zmin, d->n->zmax, log10(d->n->Mmin), log10(d->n->Mmax));
+    snprintf(buffer_f_matter, sizeof(buffer_f_matter), "/scratch/07833/tg871330/software_scratch/hmpdf/data/f_matter_zmin_%.3f_zmax_%.3f_Mmin_%.3f_Mmax_%.3f_Nz_%d_NM_%d.bin", d->n->zmin, d->n->zmax, log10(d->n->Mmin), log10(d->n->Mmax), d->n->Nz, d->n->NM);
     FILE *fp_matter = fopen(buffer_f_matter, "w");
     fwrite(d->n->zgrid, sizeof(double), d->n->Nz, fp_matter);
     fwrite(f_matter, sizeof(double), d->n->Nz, fp_matter);
