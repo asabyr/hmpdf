@@ -65,6 +65,50 @@ reset_halo_model(hmpdf_obj *d)
     ENDFCT
 }//}}}
 
+
+
+static int
+splint(double x_arr[],
+       double y_arr[],
+       double y2_arr[],
+       int n_points,
+       double x_value,
+       double *y_value)
+{
+  // spline interpolation function from class_sz: splint in class_sz_tools.c https://github.com/CLASS-SZ/class_sz/blob/master/class-sz/tools/class_sz_tools.c
+  int k_low, k_high, k;
+  float h,b,a;
+
+  k_low=0;
+  k_high = n_points-1;
+  
+  while (k_high-k_low > 1)
+  {
+    k = (k_high+k_low) >> 1;//shift operator divides by 2 so k=(k_high+k_low)/2
+    if (x_arr[k] > x_value)
+      k_high = k;
+    else
+      k_low = k;
+  }
+
+  h = x_arr[k_high] - x_arr[k_low];
+  if (h == 0.0) 
+    return 0;
+
+  a = (x_arr[k_high] - x_value)/h;
+  b = (x_value-x_arr[k_low])/h;
+
+  *y_value =
+  a*y_arr[k_low]
+  +b*y_arr[k_high]
+  +((a*a*a-a)*y2_arr[k_low]
+    +(b*b*b-b)*y2_arr[k_high])
+  *(h*h)
+  /6.0;
+
+  return 1;
+}
+
 static int 
 DeltaVir_BryanNorman98(hmpdf_obj *d, int z_index, double *out)
 {//{{{
@@ -304,6 +348,99 @@ bnu_Tinker10(double nu)
     return 1.0 - A*pow(nu, a)/(pow(nu, a) + pow(1.686, a)) + B*pow(nu, b) + C*pow(nu, c);
 }//}}}
 
+static double
+get_Omega_m_nonu_at_z(hmpdf_obj *d, double z){
+    
+    //get_Omega_m_nonu_at_z function in class_sz_tools.c https://github.com/CLASS-SZ/class_sz/blob/master/class-sz/tools/class_sz_tools.c
+    
+    double Om_0 = d->c->Om_0;
+    double Om_0_nonu = d->c->Oc_0 + d->c->Ob_0;
+    double Or_0 = d->c->Or_0;
+    double Ol_0 = 1. - Om_0 - Or_0;
+    double Om_z = Om_0_nonu * pow(1. + z, 3.) / (Om_0 * pow(1. + z, 3.) + Ol_0 + Or_0 * pow(1. + z, 4.));
+    return Om_z;}
+
+static double
+get_delta_mean_from_delta_crit_at_z(hmpdf_obj *d, double delta_crit,
+                                           double z){
+    
+    //get_delta_mean_from_delta_crit_at_z function in class_sz_tools.c https://github.com/CLASS-SZ/class_sz/blob/master/class-sz/tools/class_sz_tools.c
+    
+    double Omega_m_z = get_Omega_m_nonu_at_z(d,z);//get matter density
+    double delta_mean = delta_crit / Omega_m_z; //compute \Delta_m from \Delta_c 
+
+    return delta_mean;
+}
+
+static double
+fnu_Tinker08_m200c(hmpdf_obj *d, double sigma, double z){
+
+      //adapted from class_sz: MF_T08_m500 function in class_sz_tools.c https://github.com/CLASS-SZ/class_sz/blob/master/class-sz/tools/class_sz_tools.c
+
+      z = (z<3.0) ? z : 3.0;
+
+      //get delta_mean from delta_crit !NOTE HARDCODED 200c!
+      double delta_mean_not_log=get_delta_mean_from_delta_crit_at_z(d, 200.,z);
+      //double delta_mean_not_log=400; //testing interp 
+      double delta_mean = log10(delta_mean_not_log); //interp in log
+         
+      double delta_mean_arr[9]={200., 300., 400., 600., 800., 1200., 1600., 2400., 3200.};
+      //double delta_mean_arr[8]={200., 300.,600., 800., 1200., 1600., 2400., 3200.};//testing interp  
+      int i;
+      for (i=0;i<9;i++)//interp in log
+      delta_mean_arr[i] =
+      log10(delta_mean_arr[i]);
+
+      //Table 2 in Tinker+08
+      double A_arr[9]={0.186,0.200, 0.212, 0.218, 0.248, 0.255, 0.260, 0.260, 0.260};
+      double a_arr[9]={1.47, 1.52, 1.56, 1.61, 1.87, 2.13, 2.30, 2.53, 2.66};
+      double b_arr[9]={2.57, 2.25, 2.05, 1.87, 1.59, 1.51, 1.46, 1.44, 1.41};
+      double c_arr[9]={1.19, 1.27, 1.34, 1.45, 1.58, 1.80, 1.97, 2.24, 2.44};
+      double d2_A_arr[9]={0.00, 0.50, -1.56, 3.05, -2.95, 1.07, -0.71, 0.21, 0.00};
+      double d2_a_arr[9]={0.00,1.19,-6.34,21.36,-10.95,2.59,-0.85,-2.07,0.00};
+      double d2_b_arr[9]={0.00, -1.08, 12.61,-20.96,24.08, -6.64, 3.84, -2.09,0.00};
+      double d2_c_arr[9]={0.00, 0.94, -0.43, 4.61, 0.01, 1.21, 1.43, 0.33, 0.00};
+        
+      //test interp
+      //double A_arr[8]={0.186,0.200,0.218, 0.248, 0.255, 0.260, 0.260, 0.260};
+      //double a_arr[8]={1.47, 1.52,1.61, 1.87, 2.13, 2.30, 2.53, 2.66};
+      //double b_arr[8]={2.57, 2.25,1.87, 1.59, 1.51, 1.46, 1.44, 1.41};
+      //double c_arr[8]={1.19, 1.27,1.45, 1.58, 1.80, 1.97, 2.24, 2.44};
+      //double d2_A_arr[8]={0.00, 0.50,3.05, -2.95, 1.07, -0.71, 0.21, 0.00};
+      //double d2_a_arr[8]={0.00,1.19,21.36,-10.95,2.59,-0.85,-2.07,0.00};
+      //double d2_b_arr[8]={0.00, -1.08,-20.96,24.08, -6.64, 3.84, -2.09,0.00};
+      //double d2_c_arr[8]={0.00, 0.94,4.61, 0.01, 1.21, 1.43, 0.33, 0.00};
+      
+      //where interp values will be stored  
+      double *A_z0=malloc(sizeof(double));
+      double *a_z0=malloc(sizeof(double));
+      double *b_z0=malloc(sizeof(double));
+      double *c_z0=malloc(sizeof(double));
+    
+      //interp values
+      splint(delta_mean_arr, A_arr,d2_A_arr,9,delta_mean,A_z0);
+      splint(delta_mean_arr, a_arr,d2_a_arr,9,delta_mean,a_z0);
+      splint(delta_mean_arr, b_arr,d2_b_arr,9,delta_mean,b_z0);
+      splint(delta_mean_arr,c_arr,d2_c_arr,9,delta_mean,c_z0);
+      //printf("A_z0 %.5f\n", *A_z0); 
+      //printf("a_z0 %.5f\n", *a_z0);
+      //printf("b_z0 %.5f\n", *b_z0);
+      //printf("c_z0 %.5f\n", *c_z0);
+      
+      //compute at z
+      double alphaT08 =pow(10.,-pow(0.75/log10(pow(10.,delta_mean)/75.),1.2));
+      double A=*A_z0*pow(1.+z,-0.14);
+      double a=*a_z0*pow(1.+z,-0.06);
+      double b=*b_z0*pow(1.+z,-alphaT08);
+      double c=*c_z0;
+      //printf("z %.5f\n", z);
+      //printf("A %.5f\n", A);  
+      //printf("a %.5f\n", a);
+      //printf("b %.5f\n", b);
+      //printf("c %.5f\n", c);
+      return (A*(pow(sigma/b,-a)+1.)*exp(-c/pow(sigma,2.)));
+}
+
 static int
 dndlogM(hmpdf_obj *d, int z_index, int M_index, double *hmf, double *bias)
 {//{{{
@@ -320,25 +457,41 @@ dndlogM(hmpdf_obj *d, int z_index, int M_index, double *hmf, double *bias)
     }
     // we are below the mass cut (or none is given)
     else
-    {
+    {  //original, using T10 mass function
+        if (MDEF_GLOBAL==hmpdf_mdef_m){
         double sigma_squared = d->pwr->ssq[M_index][0];
         double sigma_squared_prime = d->pwr->ssq[M_index][1];
         //double nu = 1.686/sqrt(d->c->Dsq[z_index] * sigma_squared);
-	double dc=3.0/20.0*pow(12.0*M_PI,2.0/3.0);
+    	double dc=3.0/20.0*pow(12.0*M_PI,2.0/3.0);
         double nu=dc/sqrt(d->c->Dsq[z_index]*sigma_squared);
         double fnu = fnu_Tinker10(d, nu, d->n->zgrid[z_index]);
 
-        #ifdef SAVE_SIGMA_NU
-	FILE *fp = fopen("/scratch/07833/tg871330/tSZ_maps/hmpdf_maps/sigma_nu/hmf_sigma_nu.txt", "a");
-	fprintf(fp, "%.8f %.18e %.18e %.18e\n",d->n->zgrid[z_index], d->n->Mgrid[M_index],sigma_squared*d->c->Dsq[z_index], nu);
-	fclose(fp);
-	#endif
+        //#ifdef SAVE_SIGMA_NU
+	    //FILE *fp = fopen("/scratch/07833/tg871330/tSZ_maps/hmpdf_maps/sigma_nu/hmf_sigma_nu.txt", "a");
+	    //fprintf(fp, "%.8f %.18e %.18e %.18e\n",d->n->zgrid[z_index], d->n->Mgrid[M_index],sigma_squared*d->c->Dsq[z_index], nu);
+	    //fclose(fp);
+	    //#endif
+
+        *hmf = -fnu * d->c->rho_m_0 * sigma_squared_prime
+               / (2.0 * sigma_squared * d->n->Mgrid[M_index]);
+
+        *bias = bnu_Tinker10(nu);}
+        
+        else if (MDEF_GLOBAL==hmpdf_mdef_c){
+        //using T08 mass function at M200c
+        double sigma_squared = d->pwr->ssq[M_index][0];
+        double sigma=sqrt(d->c->Dsq[z_index]*d->pwr->ssq[M_index][0]);
+        double sigma_squared_prime = d->pwr->ssq[M_index][1];
+        double dc=3.0/20.0*pow(12.0*M_PI,2.0/3.0);
+        double nu=dc/sqrt(d->c->Dsq[z_index]*sigma_squared);
+        double fnu = fnu_Tinker08_m200c(d, sigma, d->n->zgrid[z_index]);
 
         *hmf = -fnu * d->c->rho_m_0 * sigma_squared_prime
                / (2.0 * sigma_squared * d->n->Mgrid[M_index]);
 
         *bias = bnu_Tinker10(nu);
-
+        
+        }
         if (d->h->massfunc_corr != NULL)
         {
             *hmf *= d->h->massfunc_corr(d->n->zgrid[z_index],
@@ -369,10 +522,10 @@ create_dndlogM(hmpdf_obj *d)
     SAFEALLOC(d->h->bias, malloc(d->n->Nz * sizeof(double *)));
     SETARRNULL(d->h->hmf, d->n->Nz);
 
-    #ifdef SAVE_SIGMA_NU
-    FILE *fp = fopen("/scratch/07833/tg871330/tSZ_maps/hmpdf_maps/sigma_nu/hmf_sigma_nu.txt", "w");
-    fclose(fp);
-    #endif
+//    #ifdef SAVE_SIGMA_NU
+//    FILE *fp = fopen("/scratch/07833/tg871330/tSZ_maps/hmpdf_maps/sigma_nu/hmf_sigma_nu.txt", "w");
+//    fclose(fp);
+//    #endif
 
     for (int z_index=0; z_index<d->n->Nz; z_index++)
     {
@@ -395,8 +548,8 @@ create_dndlogM(hmpdf_obj *d)
 
 	#ifdef SAVE_HMF
 	char buffer[512];
-        sprintf(buffer, "/scratch/07833/tg871330/tSZ_maps/hmpdf_maps/hmf/hmf_%.8f.bin", d->n->zgrid[z_index]);
-        FILE *fp = fopen(buffer, "w");
+    sprintf(buffer, "/scratch/07833/tg871330/software_scratch/hmpdf/hmf/hmf_%.8f.bin", d->n->zgrid[z_index]);
+    FILE *fp = fopen(buffer, "w");
 	fwrite(d->n->Mgrid, sizeof(double), d->n->NM, fp);
 	fwrite(d->h->hmf[z_index], sizeof(double), d->n->NM, fp);
 	fclose(fp);

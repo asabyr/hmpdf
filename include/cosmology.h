@@ -22,6 +22,8 @@ typedef struct//{{{
     double *Om;
     double Om_0;
     double Ob_0;
+    double Or_0;
+    double Oc_0;
     double YHe;
     double y_H;
     double y_He;

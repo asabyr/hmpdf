@@ -188,7 +188,9 @@ fill_background(hmpdf_obj *d)
     d->c->Om_0 = ba->Omega0_m;
     d->c->rho_m_0 = d->c->Om_0 * d->c->rho_c_0;
     d->c->Ob_0 = ba->Omega0_b;
-
+    d->c->Or_0 = pvecback[ba->index_bg_Omega_r];
+    d->c->Oc_0 = ba->Omega0_cdm;
+    
     // get background
     for (int z_index=0; z_index<d->n->Nz; z_index++)
     {
