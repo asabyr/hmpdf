@@ -320,7 +320,7 @@ fill_thermo(hmpdf_obj *d)
     struct thermodynamics *th= (struct thermodynamics *)d->cls->th;
     d->c->YHe = th->YHe;//primordial Helium abundance
     d->c->XH=1-d->c->YHe; //Hydrogen mass fraction
-    d->c->mu_e=d->c->y_H*d->c->XH+d->c->y_He*0.5*d->c->YHe;//mean molecular weight per electron, https://arxiv.org/pdf/2208.07847 pg7 where d->c->y_H and d->c->y_He are ionization fractions (user input, default=1)
+    d->c->mu_e=1.0/(d->c->y_H*d->c->XH+d->c->y_He*0.5*d->c->YHe);//mean molecular weight per electron, https://arxiv.org/pdf/2208.07847 pg7 where d->c->y_H and d->c->y_He are ionization fractions (user input, default=1)
     d->c->f_free=(d->c->y_H+d->c->y_He)/2.0; //free electron fraction
 ENDFCT
 }
