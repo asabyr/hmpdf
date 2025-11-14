@@ -195,6 +195,7 @@ create_grids(hmpdf_obj *d)
     if (strcmp(d->n->Mgrid_file, "none")!=0){
 	FILE *fp_Mgrid=fopen(d->n->Mgrid_file, "rb");
 	fread(d->n->Mgrid, sizeof(double), d->n->NM, fp_Mgrid);
+    printf("read mass grid");
 	FILE *fp_Mweights=fopen(d->n->Mweights_file, "rb");
 	fread(d->n->Mweights, sizeof(double), d->n->NM, fp_Mweights);
     }

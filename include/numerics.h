@@ -27,7 +27,7 @@ typedef struct//{{{
     double *Mweights;
     char *Mgrid_file;
     char *Mweights_file;
-    
+    char *out_dir_path;    
     hmpdf_mass_cuts_f mass_cuts;
     void *mass_cuts_params;
 

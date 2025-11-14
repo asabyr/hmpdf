@@ -178,10 +178,6 @@ get_DM_IGM(hmpdf_obj *d)
 
     if (strcmp(d->op->DM_IGM_type,"homogeneous")==0.0){
     
-    double XH=1-d->c->YHe; //Hydrogen mass fraction
-    double mu_e=d->c->y_H*XH+d->c->y_He*0.5*d->c->YHe;//mean molecular weight per electron, https://arxiv.org/pdf/2208.07847 pg7
-    double f_free=(d->c->y_H+d->c->y_He)/2.0; //free electron fraction
-     
     double *f_IGM;
     SAFEALLOC(f_IGM,    malloc(d->n->Nz * sizeof(double)));
     
@@ -232,7 +228,7 @@ get_DM_IGM(hmpdf_obj *d)
 
     for (int z_index=0; z_index<d->n->Nz; z_index++){
     	
-    	mass_total_e[z_index]=f_free*d->c->rho_c_0*d->c->Ob_0*d->c->volume_tot[z_index];
+    	mass_total_e[z_index]=d->c->f_free*d->c->rho_c_0*d->c->Ob_0*d->c->volume_tot[z_index];
 	    mass_total_m[z_index]=d->c->rho_c_0*d->c->Om_0*d->c->volume_tot[z_index];
     	
 	//printf("z%.18e\n", d->n->zgrid[z_index]);
@@ -264,7 +260,7 @@ get_DM_IGM(hmpdf_obj *d)
     fclose(fp_matter);
     
     //now compute DM_IGM
-    double prefactors = f_free*d->c->Ob_0 * d->c->rho_c_0/mu_e/M_ATOMIC*M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
+    double prefactors = d->c->f_free*d->c->Ob_0 * d->c->rho_c_0/d->c->mu_e/M_ATOMIC*M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
     double DM_IGM=0.0;
     
     for (int z_index=0; z_index<d->n->Nz; z_index++)
@@ -387,7 +383,7 @@ prepare_op(hmpdf_obj *d)
     HMPDFPRINT(1, "prepare_op\n");
 
     if (d->f->Nfilters > 0)
-    {
+    {   printf("there are filters");
         SAFEHMPDF(create_conj_profiles(d));
         SAFEHMPDF(create_filtered_profiles(d));
     }
@@ -432,6 +428,8 @@ pdf_adjust_binedges(hmpdf_obj *d, int Nbins,
             binedges_out[ii] += mean;
         }
     }
+    else {printf("mean %.18f\n", mean);
+            }
     if (d->p->stype == hmpdf_electron_density && strcmp(d->op->DM_IGM_type,"none") != 0)
     {printf("adding IGM DM");
         for (int ii=0; ii<=Nbins; ii++)

@@ -25,8 +25,11 @@ typedef struct//{{{
     double Or_0;
     double Oc_0;
     double YHe;
+    double XH;
     double y_H;
     double y_He;
+    double mu_e;
+    double f_free;
 }//}}}
 cosmology_t;
 

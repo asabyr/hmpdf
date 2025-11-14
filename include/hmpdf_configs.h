@@ -521,6 +521,7 @@ typedef enum
                 */
     hmpdf_hmf_swap,
     hmpdf_DM_IGM,
+    hmpdf_out_dir_path,
     hmpdf_end_configs, /*!< required last argument in hmpdf_init_fct(), the convenience macro
                         *   hmpdf_init() takes care of that.
                         */

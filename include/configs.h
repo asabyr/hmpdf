@@ -20,7 +20,7 @@
 #define PKINTEGR_EPSABS 0.0
 #define PKINTEGR_EPSREL 1e-6
 
-#define MDEF_GLOBAL hmpdf_mdef_m // this should not be changed,
+#define MDEF_GLOBAL hmpdf_mdef_c // this should not be changed,
                                  //    since it's assumed in computation
                                  //    of the mass function
 
@@ -134,7 +134,7 @@ struct DEFAULTS {int Ncores[3]; int verbosity; int warn_is_err;
                  double *Duffy08_p; double *Tinker10_p; double *Battaglia12_p; double *Battaglia16_p; double *Lee22_BPL_p; double *TNG_p;  hmpdf_ne_profile_e ne_prof[3];
                  hmpdf_noise_pwr_f noise_pwr; void *noise_pwr_params;
                  double fsky[3]; int pxlgrid[3]; int mappoisson; int mapseed; double y_Hyd[3]; double y_Hel[3]; char *hmf_swap; char *dm_igm; char *zgrid_f; char *zweights_f; 
-		 char *Mgrid_f; char *Mweights_f; int adjust_Rout};
+		 char *Mgrid_f; char *Mweights_f; int adjust_Rout; char *out_dir_p};
 
 extern
 struct DEFAULTS def;
