@@ -504,6 +504,13 @@ Battmodel_density_integrand(double z, void *params)
     return pow(r, p->gamma_dens)*pow(1.0 + pow(r, p->alpha_dens), -(p->beta_dens+p->gamma_dens)/p->alpha_dens);
 }
 
+static double
+Battmodel_density_integrand_fit(double r, void *params)
+{
+    density_params *p = (density_params *)params;
+    return pow(r, p->gamma_dens)*pow(1.0 + pow(r, p->alpha_dens), -(p->beta_dens+p->gamma_dens)/p->alpha_dens);
+}
+
 static double 
 Battmodel_density_integrand_3D(double x_over_xc, void *params)
 {   
@@ -718,7 +725,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     par.gamma_dens = Battmodel_density_primitive(d, M200c, d->n->zgrid[z_index], 4);
     par.xc_dens = Battmodel_density_primitive(d, M200c, d->n->zgrid[z_index], 1);
     par.R200c_dens = R200c; 
-
+    
     integrand.function = &Battmodel_density_integrand;
     integrand_3D.function = &Battmodel_density_integrand_3D;
 
@@ -727,7 +734,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
 
     scaling = 1.0/(1.0+d->n->zgrid[z_index])*d->c->f_free*2.0*rho0 * xc * d->c->rho_c[z_index] * d->c->Ob_0/d->c->Om_0/M_ATOMIC/d->c->mu_e * R200c * M_SOLAR_KG*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
     scaling_3D = 4*M_PI*rho0*d->c->rho_c[z_index]*d->c->Ob_0/d->c->Om_0*d->c->f_free; 
-    
+     
     //save 3D profile
     #ifdef SAVE_PROF
     
@@ -735,7 +742,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     double P3D_ne[d->p->Ntheta+1];
 
     for (int ii=0; ii<d->p->Ntheta+1; ii++){
-        P3D[ii]=rho0*Battmodel_density_integrand(d->p->decr_tgrid[ii]*d->p->rout_scale/xc, &par);
+        P3D[ii]=rho0*Battmodel_density_integrand_fit(d->p->decr_tgrid[ii]*d->p->rout_scale/xc, &par);
         P3D_ne[ii]=P3D[ii]/M_ATOMIC/d->c->mu_e;
     }
     
@@ -814,7 +821,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     
     for (int ii=0; ii<d->p->Ntheta+1; ii++){
         double r = d->p->decr_tgrid[ii]*Rout;
-        P3D[ii]=d->c->f_free*d->c->Ob_0/d->c->Om_0*rhos_nfw/(r/rs_nfw)/pow(1+r/rs_nfw, 2.0);
+        P3D[ii]=rhos_nfw/(r/rs_nfw)/pow(1+r/rs_nfw, 2.0)/d->c->rho_c[z_index];
         P3D_ne[ii]=P3D[ii]/d->c->mu_e/M_ATOMIC/(d->c->Ob_0/d->c->Om_0)/d->c->rho_c[z_index]/d->c->f_free;
     }
 
@@ -943,7 +950,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++)
     {
         double t = d->p->decr_tgrid[ii] * theta_out;
-
+        
         par.rproj_dens = tan(t) * d->c->angular_diameter[z_index] / R200c / xc;
 
         double lout = sqrt(Rout*Rout - par.rproj_dens*par.rproj_dens);
@@ -958,6 +965,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
 
         // normalize
         p[ii] *= scaling;
+        
     }
     
     gsl_integration_workspace_free(ws);
@@ -1113,8 +1121,8 @@ create_profiles(hmpdf_obj *d)
             FILE *fp = fopen(buffer, "w");
 	        double theta_max=d->p->profiles[z_index][M_index][0];
 	        fwrite(&theta_max, sizeof(double), 1, fp);
-	        fwrite(d->p->decr_tgrid+1,sizeof(double),d->p->Ntheta, fp);
-	        fwrite(d->p->profiles[z_index][M_index]+1, sizeof(double), d->p->Ntheta, fp);
+	        fwrite(d->p->decr_tgrid,sizeof(double),d->p->Ntheta+1, fp);
+	        fwrite(d->p->profiles[z_index][M_index]+1, sizeof(double), d->p->Ntheta+1, fp);
             fclose(fp);
             #endif
 
