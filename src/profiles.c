@@ -781,7 +781,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     
     double XH_TNG=0.76;
     scaling = 1.0/(1.0+d->n->zgrid[z_index])*2.0*ne0*xc*200.0/(XH_TNG*MPROTON)*d->c->rho_c[z_index]*M_SOLAR_KG*d->c->Ob_0/d->c->Om_0*R200c*pow(CM_PC*CM_PC*1e6*1e6*CM_PC,-1.0)/(1e10);
-    scaling_3D = 4*M_PI*ne0*200.0*d->c->rho_c[z_index]*d->c->Ob_0/d->c->Om_0/d->c->XH;
+    scaling_3D = 4*M_PI*ne0*200.0*d->c->rho_c[z_index]*d->c->Ob_0/d->c->Om_0;
  
     #ifdef SAVE_PROF
     
@@ -822,7 +822,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     for (int ii=0; ii<d->p->Ntheta+1; ii++){
         double r = d->p->decr_tgrid[ii]*Rout;
         P3D[ii]=rhos_nfw/(r/rs_nfw)/pow(1+r/rs_nfw, 2.0)/d->c->rho_c[z_index];
-        P3D_ne[ii]=P3D[ii]/d->c->mu_e/M_ATOMIC/(d->c->Ob_0/d->c->Om_0)/d->c->rho_c[z_index]/d->c->f_free;
+        P3D_ne[ii]=P3D[ii]/d->c->mu_e/M_ATOMIC;
     }
 
     char buffer[512];
@@ -851,7 +851,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
         double t = d->p->decr_tgrid[ii] * theta_out;
         par.rproj_dens = tan(t) * d->c->angular_diameter[z_index]/rs_nfw;
         double lout = sqrt(Rout*Rout - par.rproj_dens*par.rproj_dens);
-
+        double percent_err;
         double err;
         SAFEGSL(gsl_integration_qag(&integrand, 0.0, lout,
                                     BATTINTEGR_EPSABS
@@ -860,6 +860,11 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
                                     BATTINTEGR_LIMIT, BATTINTEGR_KEY,
                                     ws, p+ii, &err));
 
+        percent_err=err/p[ii]*100.0;
+        if (percent_err>0.05){
+        printf("percent error %.18f\n",percent_err);
+        exit(0);
+        }
         // normalize
         p[ii] *= scaling;
     }
@@ -954,7 +959,8 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
         par.rproj_dens = tan(t) * d->c->angular_diameter[z_index] / R200c / xc;
 
         double lout = sqrt(Rout*Rout - par.rproj_dens*par.rproj_dens);
-
+        
+        double percent_err;
         double err;
         SAFEGSL(gsl_integration_qag(&integrand, 0.0, lout,
                                     BATTINTEGR_EPSABS
@@ -962,7 +968,12 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
                                     BATTINTEGR_EPSREL,
                                     BATTINTEGR_LIMIT, BATTINTEGR_KEY,
                                     ws, p+ii, &err));
-
+        
+        percent_err=err/p[ii]*100.0;
+        if (percent_err>0.05){
+        printf("percent error %.18f\n",percent_err);
+        exit(0);
+        }
         // normalize
         p[ii] *= scaling;
         
@@ -975,10 +986,16 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     gsl_integration_workspace *ws_3D;
     SAFEALLOC(ws_3D, gsl_integration_workspace_alloc(BATTINTEGR_LIMIT));
     double err_3D;
+    double percent_err_3D;
     SAFEGSL(gsl_integration_qag(&integrand_3D, 0.0, Rout,
-                                0.0, BATTINTEGR_EPSREL,
+                                d->n->Mgrid[M_index]*BATTINTEGR_EPSABS/100.0/scaling_3D, BATTINTEGR_EPSREL,
                                BATTINTEGR_LIMIT, BATTINTEGR_KEY,
                                 ws_3D, d->p->M_e_halos[z_index]+M_index, &err_3D));
+    percent_err_3D=err_3D/d->p->M_e_halos[z_index][M_index]*100.0;
+    if (percent_err_3D>0.05){
+    printf("percent error %.18f\n", percent_err_3D);
+    exit(0);
+    }
     d->p->M_e_halos[z_index][M_index]*=scaling_3D;
     gsl_integration_workspace_free(ws_3D);
     }
@@ -1117,7 +1134,7 @@ create_profiles(hmpdf_obj *d)
                                              d->p->profiles[z_index][M_index]+1));
 	        #ifdef SAVE_PROF
             char buffer[512];
-            sprintf(buffer, "%s/profiles/profile_%s_z%.18f_M%.18e.bin", d->n->out_dir_path, d->p->prof_name,  d->n->zgrid[z_index], d->n->Mgrid[M_index]);
+            sprintf(buffer, "%s/profiles/profile_%s_z%.18f_M%.18e_abserr%.18e_relerr%.18e.bin", d->n->out_dir_path, d->p->prof_name,  d->n->zgrid[z_index], d->n->Mgrid[M_index], BATTINTEGR_EPSABS,BATTINTEGR_EPSREL);
             FILE *fp = fopen(buffer, "w");
 	        double theta_max=d->p->profiles[z_index][M_index][0];
 	        fwrite(&theta_max, sizeof(double), 1, fp);
@@ -1125,7 +1142,6 @@ create_profiles(hmpdf_obj *d)
 	        fwrite(d->p->profiles[z_index][M_index]+1, sizeof(double), d->p->Ntheta+1, fp);
             fclose(fp);
             #endif
-
             CONTINUE_IF_ERR
             // if requested, save corresponding profiles to file
             if (d->p->tot_profiles_indices)

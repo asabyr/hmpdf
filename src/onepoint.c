@@ -196,7 +196,7 @@ get_DM_IGM(hmpdf_obj *d)
 	    mass_halos_m[z_index]=0.0; 
 	
 	char buffer_Me[512];
-	sprintf(buffer_Me, "/scratch/07833/tg871330/software_scratch/hmpdf/data/Me_z%.8f.bin", d->n->zgrid[z_index]);
+	sprintf(buffer_Me, "/scratch/07833/tg871330/software_scratch/hmpdf/data/Me_%s_z%.8f_abserr%.18f_relerr%.18f.bin",d->p->prof_name, d->n->zgrid[z_index], BATTINTEGR_EPSABS, BATTINTEGR_EPSREL);
 	FILE *fp_Me = fopen(buffer_Me, "w");
 	fwrite(d->n->Mgrid,  sizeof(double), d->n->NM, fp_Me);
 	fwrite(d->p->M_e_halos[z_index],sizeof(double), d->n->NM, fp_Me);
