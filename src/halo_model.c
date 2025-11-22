@@ -142,7 +142,7 @@ density_threshold(hmpdf_obj *d, int z_index, hmpdf_mdef_e mdef, double *out)
     ENDFCT
 }//}}}
 
-static int 
+int 
 RofM(hmpdf_obj *d, int z_index, int M_index, double *out,
      double mass_resc)
 {//{{{

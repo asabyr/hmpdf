@@ -424,10 +424,22 @@ tsz_profile(hmpdf_obj *d, int z_index, int M_index,
             double theta_out, double Rout, double *p)
 {
     STARTFCT
+    double M200c, R200c;
+    if (MDEF_GLOBAL==hmpdf_mdef_c){
+    
+    
+    //no need to convert mass
+    SAFEHMPDF(RofM(d, z_index, M_index, &R200c, mass_resc));
 
+    M200c = d->n->Mgrid[M_index];
+
+    }
+    else {
     // convert to 200c
-    double M200c, R200c, c200c;
+    double c200c;
     SAFEHMPDF(Mconv(d, z_index, M_index, hmpdf_mdef_c, mass_resc, &M200c, &R200c, &c200c));
+    }
+    
     double P0 = Battmodel_primitive(d, M200c, d->n->zgrid[z_index], 0);
     double xc = Battmodel_primitive(d, M200c, d->n->zgrid[z_index], 1);
     Rout /= R200c * xc;
@@ -693,11 +705,19 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
             double theta_out, double Rout, double *p)
 {
     STARTFCT
-
-
+    double M200c, R200c;
+    if (MDEF_GLOBAL==hmpdf_mdef_c){
+    
+    //no need to convert mass
+    SAFEHMPDF(RofM(d, z_index, M_index, &R200c, mass_resc));
+    
+    M200c = d->n->Mgrid[M_index];  
+    }
+    else {
     // convert to 200c
-    double M200c, R200c, c200c;
+    double c200c;
     SAFEHMPDF(Mconv(d, z_index, M_index, hmpdf_mdef_c, mass_resc, &M200c, &R200c, &c200c));
+    }
     
     //need to initialize these
     gsl_function integrand; 
