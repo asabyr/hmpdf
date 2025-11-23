@@ -374,14 +374,22 @@ get_delta_mean_from_delta_crit_at_z(hmpdf_obj *d, double delta_crit,
 }
 
 static double
-fnu_Tinker08_m200c(hmpdf_obj *d, double sigma, double z){
+fnu_Tinker08(hmpdf_obj *d, double sigma, double z){
 
       //adapted from class_sz: MF_T08_m500 function in class_sz_tools.c https://github.com/CLASS-SZ/class_sz/blob/master/class-sz/tools/class_sz_tools.c
 
-      z = (z<3.0) ? z : 3.0;
+      z = (z<2.5) ? z : 2.5;
+      
+      double delta_mean_not_log;
 
-      //get delta_mean from delta_crit !NOTE HARDCODED 200c!
-      double delta_mean_not_log=get_delta_mean_from_delta_crit_at_z(d, 200.,z);
+      //!NOTE HARDCODED 200c!
+      if (d->h->HMF_mdef==hmpdf_mdef_c){
+      //get delta_mean from delta_crit
+      delta_mean_not_log=get_delta_mean_from_delta_crit_at_z(d, 200.,z);}
+
+      else if (d->h->HMF_mdef==hmpdf_mdef_m){
+      delta_mean_not_log=200.0;}
+
       //double delta_mean_not_log=400; //testing interp 
       double delta_mean = log10(delta_mean_not_log); //interp in log
          
@@ -485,7 +493,7 @@ dndlogM(hmpdf_obj *d, int z_index, int M_index, double *hmf, double *bias)
         double sigma_squared_prime = d->pwr->ssq[M_index][1];
         double dc=3.0/20.0*pow(12.0*M_PI,2.0/3.0);
         double nu=dc/sqrt(d->c->Dsq[z_index]*sigma_squared);
-        double fnu = fnu_Tinker08_m200c(d, sigma, d->n->zgrid[z_index]);
+        double fnu = fnu_Tinker08(d, sigma, d->n->zgrid[z_index]);
 
         *hmf = -fnu * d->c->rho_m_0 * sigma_squared_prime
                / (2.0 * sigma_squared * d->n->Mgrid[M_index]);
