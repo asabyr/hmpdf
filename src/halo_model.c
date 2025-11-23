@@ -76,6 +76,7 @@ splint(double x_arr[],
        double *y_value)
 {
   // spline interpolation function from class_sz: splint in class_sz_tools.c https://github.com/CLASS-SZ/class_sz/blob/master/class-sz/tools/class_sz_tools.c
+  // it's from Sec 3.3 of Press+1992 as cited in Tinker+2008: https://arxiv.org/pdf/0803.2706
   int k_low, k_high, k;
   float h,b,a;
 
@@ -149,7 +150,7 @@ RofM(hmpdf_obj *d, int z_index, int M_index, double *out,
     STARTFCT
 
     double dt;
-    SAFEHMPDF(density_threshold(d, z_index, MDEF_GLOBAL, &dt));
+    SAFEHMPDF(density_threshold(d, z_index, d->h->HMF_mdef, &dt));
     *out = cbrt(3.0*mass_resc*d->n->Mgrid[M_index] / 4.0 / M_PI / dt);
 
     ENDFCT
@@ -216,7 +217,7 @@ c_Duffy08(hmpdf_obj *d, int z_index, int M_index,
 {//{{{
     double out = c_Duffy08_1(d, d->n->zgrid[z_index],
                              mass_resc * d->n->Mgrid[M_index],
-                             MDEF_GLOBAL, conc_params);
+                             d->h->HMF_mdef, conc_params);
 
     if (d->h->conc_resc != NULL)
     {
@@ -458,7 +459,7 @@ dndlogM(hmpdf_obj *d, int z_index, int M_index, double *hmf, double *bias)
     // we are below the mass cut (or none is given)
     else
     {  //original, using T10 mass function
-        if (MDEF_GLOBAL==hmpdf_mdef_m){
+        if (strcmp(d->h->HMF_func, "T10")==0.0){
         double sigma_squared = d->pwr->ssq[M_index][0];
         double sigma_squared_prime = d->pwr->ssq[M_index][1];
         //double nu = 1.686/sqrt(d->c->Dsq[z_index] * sigma_squared);
@@ -477,7 +478,7 @@ dndlogM(hmpdf_obj *d, int z_index, int M_index, double *hmf, double *bias)
 
         *bias = bnu_Tinker10(nu);}
         
-        else if (MDEF_GLOBAL==hmpdf_mdef_c){
+        else if (strcmp(d->h->HMF_func, "T08")==0.0){
         //using T08 mass function at M200c
         double sigma_squared = d->pwr->ssq[M_index][0];
         double sigma=sqrt(d->c->Dsq[z_index]*d->pwr->ssq[M_index][0]);
@@ -491,6 +492,11 @@ dndlogM(hmpdf_obj *d, int z_index, int M_index, double *hmf, double *bias)
 
         *bias = bnu_Tinker10(nu);
         
+        }
+        
+        else {
+        HMPDFERR("Pick mass function between T10 or T08");
+ 
         }
         if (d->h->massfunc_corr != NULL)
         {

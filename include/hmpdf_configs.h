@@ -465,6 +465,8 @@ typedef enum
                                 *   Type: double[10]. Default: see src/configs.c.
                                 *   \remark in the python wrapper, pass a 1d numpy array
                                 */
+    hmpdf_HMF_func,
+    hmpdf_HMF_mdef,
     hmpdf_Battaglia12_tsz_params, /*!< Fit parameters in the
                                    *   <a href="https://arxiv.org/abs/1109.3711">Battaglia+2012</a>
                                    *   pressure profile model.

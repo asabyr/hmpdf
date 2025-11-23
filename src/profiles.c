@@ -425,7 +425,7 @@ tsz_profile(hmpdf_obj *d, int z_index, int M_index,
 {
     STARTFCT
     double M200c, R200c;
-    if (MDEF_GLOBAL==hmpdf_mdef_c){
+    if (d->h->HMF_mdef==hmpdf_mdef_c){
     
     
     //no need to convert mass
@@ -706,7 +706,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
 {
     STARTFCT
     double M200c, R200c;
-    if (MDEF_GLOBAL==hmpdf_mdef_c){
+    if (d->h->HMF_mdef==hmpdf_mdef_c){
     
     //no need to convert mass
     SAFEHMPDF(RofM(d, z_index, M_index, &R200c, mass_resc));

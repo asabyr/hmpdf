@@ -207,6 +207,8 @@ init_params(hmpdf_obj *d, param *p)
              d->p->rout_scale, dbl_type, def.rout_scale);
     INIT_P_B(hmpdf_rout_rdef,
              d->p->rout_def, mdef_type, def.rout_rdef);
+    INIT_P_B(hmpdf_HMF_mdef,
+            d->h->HMF_mdef, mdef_type, def.HMF_mdef);
     INIT_P_B(hmpdf_pixel_side,
              d->f->pixelside, dbl_type, def.pixel_sidelength);
     INIT_P_B(hmpdf_tophat_radius,
@@ -309,6 +311,8 @@ init_params(hmpdf_obj *d, param *p)
              d->p->ne_profile, ne_type, def.ne_prof);
     INIT_P(hmpdf_adjust_Rout, 
            d->p->adj_Rout, int_type, def.adjust_Rout);
+    INIT_P(hmpdf_HMF_func, 
+           d->h->HMF_func, str_type, def.HMF_func);
     INIT_P(hmpdf_noise_pwr,
            d->ns->noise_pwr, np_type, def.noise_pwr);
     INIT_P(hmpdf_noise_pwr_params,
@@ -543,6 +547,12 @@ sanity_checks(hmpdf_obj *d)
                 "Invalid source redshift %g.", d->n->zsource);
     HMPDFCHECK((d->p->ne_profile != hmpdf_ne_B16) && (d->p->ne_profile != hmpdf_ne_L22_BPL) && (d->p->ne_profile != hmpdf_ne_NFW) && (d->p->ne_profile != hmpdf_ne_TNG), 
                 "Invalid electron density profile %d.", d->p->ne_profile);
+    HMPDFCHECK((strcmp(d->h->HMF_func,"T08")!=0.0) && (strcmp(d->h->HMF_func,"T10")!=0.0), "Choose HMF between T08 and T10");
+    if (d->h->HMF_mdef == hmpdf_mdef_c){
+        HMPDFCHECK(strcmp(d->h->HMF_func,"T08")!=0.0, "Only Tinker+2008 HMF can be used if HMF mass definition is hmpdf_mdef_c --> set hmpdf_HMF_func to T08");}
+    if (strcmp(d->h->HMF_func,"T10")==0.0){
+        HMPDFCHECK(d->h->HMF_mdef != hmpdf_mdef_m, "If you are using Tinker+2010 HMF, HMF mass definition has to be hmpdf_mdef_m --> set hmpdf_HMF_mdef to hmpdf_mdef_m");}
+    
     #ifndef _OPENMP
     HMPDFCHECK(d->Ncores>1, "You specified hmpdf_N_threads = %d, "
                             "but code is compiled without OpenMP.", d->Ncores);
