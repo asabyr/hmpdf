@@ -373,6 +373,7 @@ get_delta_mean_from_delta_crit_at_z(hmpdf_obj *d, double delta_crit,
     return delta_mean;
 }
 
+
 static double
 fnu_Tinker08(hmpdf_obj *d, double sigma, double z){
 
@@ -382,19 +383,36 @@ fnu_Tinker08(hmpdf_obj *d, double sigma, double z){
       
       double delta_mean_not_log;
 
-      //!NOTE HARDCODED 200c!
+      //!NOTE HARDCODED \Delta=200!
       if (d->h->HMF_mdef==hmpdf_mdef_c){
+      
       //get delta_mean from delta_crit
       delta_mean_not_log=get_delta_mean_from_delta_crit_at_z(d, 200.,z);}
 
       else if (d->h->HMF_mdef==hmpdf_mdef_m){
+    
       delta_mean_not_log=200.0;}
-
-      //double delta_mean_not_log=400; //testing interp 
+    
+      double *A_z0=malloc(sizeof(double));
+      double *a_z0=malloc(sizeof(double));
+      double *b_z0=malloc(sizeof(double));
+      double *c_z0=malloc(sizeof(double));      
+  
+      if (d->h->interp_T08==0){
+      //params from the paper, Table 2, row 1 for \Delta = 200
+      *A_z0=0.186;
+      *a_z0=1.47;
+      *b_z0=2.57;
+      *c_z0=1.19;
+      }
+      else if (d->h->interp_T08>0){
+      
+      //interpolate
+      
       double delta_mean = log10(delta_mean_not_log); //interp in log
          
       double delta_mean_arr[9]={200., 300., 400., 600., 800., 1200., 1600., 2400., 3200.};
-      //double delta_mean_arr[8]={200., 300.,600., 800., 1200., 1600., 2400., 3200.};//testing interp  
+      
       int i;
       for (i=0;i<9;i++)//interp in log
       delta_mean_arr[i] =
@@ -410,43 +428,25 @@ fnu_Tinker08(hmpdf_obj *d, double sigma, double z){
       double d2_b_arr[9]={0.00, -1.08, 12.61,-20.96,24.08, -6.64, 3.84, -2.09,0.00};
       double d2_c_arr[9]={0.00, 0.94, -0.43, 4.61, 0.01, 1.21, 1.43, 0.33, 0.00};
         
-      //test interp
-      //double A_arr[8]={0.186,0.200,0.218, 0.248, 0.255, 0.260, 0.260, 0.260};
-      //double a_arr[8]={1.47, 1.52,1.61, 1.87, 2.13, 2.30, 2.53, 2.66};
-      //double b_arr[8]={2.57, 2.25,1.87, 1.59, 1.51, 1.46, 1.44, 1.41};
-      //double c_arr[8]={1.19, 1.27,1.45, 1.58, 1.80, 1.97, 2.24, 2.44};
-      //double d2_A_arr[8]={0.00, 0.50,3.05, -2.95, 1.07, -0.71, 0.21, 0.00};
-      //double d2_a_arr[8]={0.00,1.19,21.36,-10.95,2.59,-0.85,-2.07,0.00};
-      //double d2_b_arr[8]={0.00, -1.08,-20.96,24.08, -6.64, 3.84, -2.09,0.00};
-      //double d2_c_arr[8]={0.00, 0.94,4.61, 0.01, 1.21, 1.43, 0.33, 0.00};
-      
-      //where interp values will be stored  
-      double *A_z0=malloc(sizeof(double));
-      double *a_z0=malloc(sizeof(double));
-      double *b_z0=malloc(sizeof(double));
-      double *c_z0=malloc(sizeof(double));
-    
       //interp values
       splint(delta_mean_arr, A_arr,d2_A_arr,9,delta_mean,A_z0);
       splint(delta_mean_arr, a_arr,d2_a_arr,9,delta_mean,a_z0);
       splint(delta_mean_arr, b_arr,d2_b_arr,9,delta_mean,b_z0);
       splint(delta_mean_arr,c_arr,d2_c_arr,9,delta_mean,c_z0);
-      //printf("A_z0 %.5f\n", *A_z0); 
-      //printf("a_z0 %.5f\n", *a_z0);
-      //printf("b_z0 %.5f\n", *b_z0);
-      //printf("c_z0 %.5f\n", *c_z0);
-      
+      }
+        
       //compute at z
-      double alphaT08 =pow(10.,-pow(0.75/log10(pow(10.,delta_mean)/75.),1.2));
+      double alphaT08 =pow(10.,-pow(0.75/log10(delta_mean_not_log/75.),1.2));
       double A=*A_z0*pow(1.+z,-0.14);
       double a=*a_z0*pow(1.+z,-0.06);
       double b=*b_z0*pow(1.+z,-alphaT08);
       double c=*c_z0;
-      //printf("z %.5f\n", z);
-      //printf("A %.5f\n", A);  
-      //printf("a %.5f\n", a);
-      //printf("b %.5f\n", b);
-      //printf("c %.5f\n", c);
+      
+      free(A_z0);
+      free(a_z0);
+      free(b_z0);
+      free(c_z0);
+
       return (A*(pow(sigma/b,-a)+1.)*exp(-c/pow(sigma,2.)));
 }
 

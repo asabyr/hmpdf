@@ -14,7 +14,8 @@ typedef struct//{{{
     double *Tinker10_params;
     char *HMF_func;
     int HMF_mdef;
-
+    int interp_T08;
+    
     double *DM_conc_params;
     double *bar_conc_params;
 

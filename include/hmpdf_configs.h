@@ -467,6 +467,7 @@ typedef enum
                                 */
     hmpdf_HMF_func,
     hmpdf_HMF_mdef,
+    hmpdf_interp_T08,
     hmpdf_Battaglia12_tsz_params, /*!< Fit parameters in the
                                    *   <a href="https://arxiv.org/abs/1109.3711">Battaglia+2012</a>
                                    *   pressure profile model.

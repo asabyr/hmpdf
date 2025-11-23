@@ -313,6 +313,8 @@ init_params(hmpdf_obj *d, param *p)
            d->p->adj_Rout, int_type, def.adjust_Rout);
     INIT_P(hmpdf_HMF_func, 
            d->h->HMF_func, str_type, def.HMF_func);
+    INIT_P(hmpdf_interp_T08,
+           d->h->interp_T08, int_type, def.interp_T08);
     INIT_P(hmpdf_noise_pwr,
            d->ns->noise_pwr, np_type, def.noise_pwr);
     INIT_P(hmpdf_noise_pwr_params,
@@ -553,6 +555,9 @@ sanity_checks(hmpdf_obj *d)
     if (strcmp(d->h->HMF_func,"T10")==0.0){
         HMPDFCHECK(d->h->HMF_mdef != hmpdf_mdef_m, "If you are using Tinker+2010 HMF, HMF mass definition has to be hmpdf_mdef_m --> set hmpdf_HMF_mdef to hmpdf_mdef_m");}
     
+    HMPDFCHECK(d->h->interp_T08<0, "hmpdf_interp_T08 should be >=0");
+    if (d->h->HMF_mdef != hmpdf_mdef_m){
+        HMPDFCHECK(d->h->interp_T08==0,"hmpdf_interp_T08 should be >0 if HMF mass definition is not hmpdf_mdef_m");}
     #ifndef _OPENMP
     HMPDFCHECK(d->Ncores>1, "You specified hmpdf_N_threads = %d, "
                             "but code is compiled without OpenMP.", d->Ncores);
