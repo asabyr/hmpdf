@@ -475,12 +475,6 @@ dndlogM(hmpdf_obj *d, int z_index, int M_index, double *hmf, double *bias)
         double nu=dc/sqrt(d->c->Dsq[z_index]*sigma_squared);
         double fnu = fnu_Tinker10(d, nu, d->n->zgrid[z_index]);
 
-        //#ifdef SAVE_SIGMA_NU
-	    //FILE *fp = fopen("/scratch/07833/tg871330/tSZ_maps/hmpdf_maps/sigma_nu/hmf_sigma_nu.txt", "a");
-	    //fprintf(fp, "%.8f %.18e %.18e %.18e\n",d->n->zgrid[z_index], d->n->Mgrid[M_index],sigma_squared*d->c->Dsq[z_index], nu);
-	    //fclose(fp);
-	    //#endif
-
         *hmf = -fnu * d->c->rho_m_0 * sigma_squared_prime
                / (2.0 * sigma_squared * d->n->Mgrid[M_index]);
 
@@ -536,11 +530,6 @@ create_dndlogM(hmpdf_obj *d)
     SAFEALLOC(d->h->bias, malloc(d->n->Nz * sizeof(double *)));
     SETARRNULL(d->h->hmf, d->n->Nz);
 
-//    #ifdef SAVE_SIGMA_NU
-//    FILE *fp = fopen("/scratch/07833/tg871330/tSZ_maps/hmpdf_maps/sigma_nu/hmf_sigma_nu.txt", "w");
-//    fclose(fp);
-//    #endif
-
     for (int z_index=0; z_index<d->n->Nz; z_index++)
     {
         SAFEALLOC(d->h->hmf[z_index],  malloc(d->n->NM * sizeof(double)));
@@ -561,13 +550,20 @@ create_dndlogM(hmpdf_obj *d)
     
 
 	#ifdef SAVE_HMF
+    char *HMF_mdef_str;
+    if (d->h->HMF_mdef==hmpdf_mdef_m){
+    HMF_mdef_str="M200m";}
+    else if (d->h->HMF_mdef==hmpdf_mdef_c){
+    HMF_mdef_str="M200c";}
+
 	char buffer[512];
-    sprintf(buffer, "/scratch/07833/tg871330/software_scratch/hmpdf/hmf/hmf_%.8f.bin", d->n->zgrid[z_index]);
+    sprintf(buffer, "%s/hmf/hmf_%s_%s_z%.18f.bin", d->n->out_dir_path, d->h->HMF_func, HMF_mdef_str, d->n->zgrid[z_index]);
     FILE *fp = fopen(buffer, "w");
 	fwrite(d->n->Mgrid, sizeof(double), d->n->NM, fp);
 	fwrite(d->h->hmf[z_index], sizeof(double), d->n->NM, fp);
 	fclose(fp);
 	#endif
+
     }
 
     ENDFCT
