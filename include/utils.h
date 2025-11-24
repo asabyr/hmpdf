@@ -24,6 +24,7 @@
 #define M_SOLAR_KG 1.988416e30 //Msun in kg
 #define CM_PC 3.0856775814913673e18 //cm per pc
 #define MPROTON 1.67262192595e-27//mass of proton in kg
+#define delta_c 3.0/20.0*pow(12.0*M_PI,2.0/3.0) 
 static inline int
 hmpdf_status_update(int *status, int result)
 {//{{{

@@ -337,23 +337,10 @@ fnu_Tinker10(hmpdf_obj *d, double nu, double z)
 }//}}}
 
 static double
-bnu_Tinker10(double nu)
-{//{{{
-    double y = 2.0 + M_LN2/M_LN10; // y = log_10(200)
-    double A = 1.0 + 0.24 * y * exp(-gsl_pow_4(4.0/y));
-    double a = 0.44 * y - 0.88;
-    double B = 0.183;
-    double b = 1.5;
-    double C = 0.019 + 0.107 * y + 0.19 * exp(-gsl_pow_4(4.0/y));
-    double c = 2.4;
-    return 1.0 - A*pow(nu, a)/(pow(nu, a) + pow(1.686, a)) + B*pow(nu, b) + C*pow(nu, c);
-}//}}}
-
-static double
 get_Omega_m_nonu_at_z(hmpdf_obj *d, double z){
-    
+
     //get_Omega_m_nonu_at_z function in class_sz_tools.c https://github.com/CLASS-SZ/class_sz/blob/master/class-sz/tools/class_sz_tools.c
-    
+
     double Om_0 = d->c->Om_0;
     double Om_0_nonu = d->c->Oc_0 + d->c->Ob_0;
     double Or_0 = d->c->Or_0;
@@ -364,18 +351,41 @@ get_Omega_m_nonu_at_z(hmpdf_obj *d, double z){
 static double
 get_delta_mean_from_delta_crit_at_z(hmpdf_obj *d, double delta_crit,
                                            double z){
-    
+
     //get_delta_mean_from_delta_crit_at_z function in class_sz_tools.c https://github.com/CLASS-SZ/class_sz/blob/master/class-sz/tools/class_sz_tools.c
-    
+
     double Omega_m_z = get_Omega_m_nonu_at_z(d,z);//get matter density
     double delta_mean = delta_crit / Omega_m_z; //compute \Delta_m from \Delta_c 
 
     return delta_mean;
 }
 
+static double
+bnu_Tinker10(hmpdf_obj *d, double nu, double z)
+{//{{{
+    
+    double y;
+    if (d->h->HMF_mdef==hmpdf_mdef_c){
+
+    double delta_mean=get_delta_mean_from_delta_crit_at_z(d, 200.,z);
+    y = log(delta_mean)/M_LN10;
+    printf("y%.18f\n",y);}
+
+    else if (d->h->HMF_mdef==hmpdf_mdef_m){
+    y = 2.0 + M_LN2/M_LN10;} // y = log_10(200)}
+
+    double A = 1.0 + 0.24 * y * exp(-gsl_pow_4(4.0/y));
+    double a = 0.44 * y - 0.88;
+    double B = 0.183;
+    double b = 1.5;
+    double C = 0.019 + 0.107 * y + 0.19 * exp(-gsl_pow_4(4.0/y));
+    double c = 2.4;
+    return 1.0 - A*pow(nu, a)/(pow(nu, a) + pow(delta_c, a)) + B*pow(nu, b) + C*pow(nu, c);
+}//}}}
+
 
 static double
-fnu_Tinker08(hmpdf_obj *d, double sigma, double z){
+fsigma_Tinker08(hmpdf_obj *d, double sigma, double z){
 
       //adapted from class_sz: MF_T08_m500 function in class_sz_tools.c https://github.com/CLASS-SZ/class_sz/blob/master/class-sz/tools/class_sz_tools.c
 
@@ -408,7 +418,6 @@ fnu_Tinker08(hmpdf_obj *d, double sigma, double z){
       else if (d->h->interp_T08>0){
       
       //interpolate
-      
       double delta_mean = log10(delta_mean_not_log); //interp in log
          
       double delta_mean_arr[9]={200., 300., 400., 600., 800., 1200., 1600., 2400., 3200.};
@@ -433,6 +442,7 @@ fnu_Tinker08(hmpdf_obj *d, double sigma, double z){
       splint(delta_mean_arr, a_arr,d2_a_arr,9,delta_mean,a_z0);
       splint(delta_mean_arr, b_arr,d2_b_arr,9,delta_mean,b_z0);
       splint(delta_mean_arr,c_arr,d2_c_arr,9,delta_mean,c_z0);
+
       }
         
       //compute at z
@@ -467,32 +477,28 @@ dndlogM(hmpdf_obj *d, int z_index, int M_index, double *hmf, double *bias)
     // we are below the mass cut (or none is given)
     else
     {  //original, using T10 mass function
-        if (strcmp(d->h->HMF_func, "T10")==0.0){
         double sigma_squared = d->pwr->ssq[M_index][0];
+        double sigma=sqrt(d->c->Dsq[z_index]*d->pwr->ssq[M_index][0]);
         double sigma_squared_prime = d->pwr->ssq[M_index][1];
-        //double nu = 1.686/sqrt(d->c->Dsq[z_index] * sigma_squared);
-    	double dc=3.0/20.0*pow(12.0*M_PI,2.0/3.0);
-        double nu=dc/sqrt(d->c->Dsq[z_index]*sigma_squared);
+        double nu=delta_c/sqrt(d->c->Dsq[z_index]*sigma_squared);
+        
+        if (strcmp(d->h->HMF_func, "T10")==0.0){
+        //using T10 mass function at M200m
         double fnu = fnu_Tinker10(d, nu, d->n->zgrid[z_index]);
 
         *hmf = -fnu * d->c->rho_m_0 * sigma_squared_prime
                / (2.0 * sigma_squared * d->n->Mgrid[M_index]);
 
-        *bias = bnu_Tinker10(nu);}
+        *bias = bnu_Tinker10(d, nu, d->n->zgrid[z_index]);}
         
         else if (strcmp(d->h->HMF_func, "T08")==0.0){
-        //using T08 mass function at M200c
-        double sigma_squared = d->pwr->ssq[M_index][0];
-        double sigma=sqrt(d->c->Dsq[z_index]*d->pwr->ssq[M_index][0]);
-        double sigma_squared_prime = d->pwr->ssq[M_index][1];
-        double dc=3.0/20.0*pow(12.0*M_PI,2.0/3.0);
-        double nu=dc/sqrt(d->c->Dsq[z_index]*sigma_squared);
-        double fnu = fnu_Tinker08(d, sigma, d->n->zgrid[z_index]);
+        //using T08 mass function at M200m or M200c
+        double fsigma = fsigma_Tinker08(d, sigma, d->n->zgrid[z_index]);
 
-        *hmf = -fnu * d->c->rho_m_0 * sigma_squared_prime
+        *hmf = -fsigma * d->c->rho_m_0 * sigma_squared_prime
                / (2.0 * sigma_squared * d->n->Mgrid[M_index]);
 
-        *bias = bnu_Tinker10(nu);
+        *bias = bnu_Tinker10(d, nu,  d->n->zgrid[z_index]);
         
         }
         
