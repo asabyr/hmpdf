@@ -15,6 +15,7 @@ typedef struct//{{{
     double *Lee22_BPL_params;
     double *TNG_params; 
     char *prof_name;
+    char *prof_mdef_str;
 
     hmpdf_signaltype_e stype;
     int ne_profile;

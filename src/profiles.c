@@ -49,6 +49,7 @@ null_profiles(hmpdf_obj *d)
     d->p->tot_profiles_indices = NULL;
     d->p->M_e_halos = NULL;
     d->p->prof_name = NULL;
+    d->p->prof_mdef_str = NULL;
     ENDFCT
 }//}}}
 
@@ -807,11 +808,13 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     
     double P3D[d->p->Ntheta+1];
     double P3D_ne[d->p->Ntheta+1];
+    double P3D_scaled[d->p->Ntheta+1];
     
     for (int ii=0; ii<d->p->Ntheta+1; ii++){
     
         P3D[ii]=ne0*TNG_density_integrand(d->p->decr_tgrid[ii]*d->p->rout_scale/xc, &par);
         P3D_ne[ii]=P3D[ii]/(XH_TNG*MPROTON);
+        P3D_scaled[ii]=P3D[ii]*200.0/(XH_TNG*MPROTON)*d->c->rho_c[z_index]*M_SOLAR_KG*d->c->Ob_0/d->c->Om_0;    
     }
     
     char buffer[512];
@@ -821,6 +824,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     fwrite(d->p->decr_tgrid, sizeof(double), d->p->Ntheta+1, fp);
     fwrite(P3D, sizeof(double), d->p->Ntheta+1, fp);
     fwrite(P3D_ne, sizeof(double), d->p->Ntheta+1, fp);
+    fwrite(P3D_scaled, sizeof(double), d->p->Ntheta+1, fp);
     fclose(fp);
     #endif 
 
@@ -1028,6 +1032,13 @@ profile(hmpdf_obj *d, int z_index, int M_index, double *p)
 // returns theta_out and writes the profile into return value
 {//{{{
     STARTFCT
+    
+    if (d->p->rout_def == hmpdf_mdef_m){
+    d->p->prof_mdef_str="M200m";}
+    else if (d->p->rout_def == hmpdf_mdef_c){
+    d->p->prof_mdef_str="M200c";}
+    else if (d->p->rout_def == hmpdf_mdef_v){
+    d->p->prof_mdef_str="Mvir";}
 
     double mass_resc = (d->p->mass_resc == NULL)
                        ? 1.0
@@ -1041,6 +1052,7 @@ profile(hmpdf_obj *d, int z_index, int M_index, double *p)
     
     Rout *= d->p->rout_scale;
     double theta_out = atan(Rout/d->c->angular_diameter[z_index]);
+    
 
     if (d->p->stype == hmpdf_kappa
         && d->bcm->Arico20_params == NULL)

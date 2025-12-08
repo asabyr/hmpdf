@@ -32,7 +32,7 @@ typedef struct//{{{
     double **bias;
     
     char *hmf_file;
-
+    char *HMF_mdef_str;
     gsl_spline *c_interp;
     gsl_interp_accel **c_accel;
 }//}}}

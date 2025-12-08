@@ -22,7 +22,7 @@ null_halo_model(hmpdf_obj *d)
     d->h->bias = NULL;
     d->h->c_interp = NULL;
     d->h->c_accel = NULL;
-
+    d->h->HMF_mdef_str = NULL;
     ENDFCT
 }//}}}
 
@@ -531,6 +531,11 @@ create_dndlogM(hmpdf_obj *d)
 
     HMPDFPRINT(2, "\tcreate_dndlogM\n");
 
+    if (d->h->HMF_mdef==hmpdf_mdef_m){
+    d->h->HMF_mdef_str="M200m";}
+    else if (d->h->HMF_mdef==hmpdf_mdef_c){
+    d->h->HMF_mdef_str="M200c";}
+
     SAFEALLOC(d->h->hmf,  malloc(d->n->Nz * sizeof(double *)));
     SETARRNULL(d->h->hmf, d->n->Nz);
     SAFEALLOC(d->h->bias, malloc(d->n->Nz * sizeof(double *)));
@@ -556,14 +561,8 @@ create_dndlogM(hmpdf_obj *d)
     
 
 	#ifdef SAVE_HMF
-    char *HMF_mdef_str;
-    if (d->h->HMF_mdef==hmpdf_mdef_m){
-    HMF_mdef_str="M200m";}
-    else if (d->h->HMF_mdef==hmpdf_mdef_c){
-    HMF_mdef_str="M200c";}
-
 	char buffer[512];
-    sprintf(buffer, "%s/hmf/hmf_%s_%s_z%.18f.bin", d->n->out_dir_path, d->h->HMF_func, HMF_mdef_str, d->n->zgrid[z_index]);
+    sprintf(buffer, "%s/hmf/hmf_%s_%s_z%.18f.bin", d->n->out_dir_path, d->h->HMF_func, d->h->HMF_mdef_str, d->n->zgrid[z_index]);
     FILE *fp = fopen(buffer, "w");
 	fwrite(d->n->Mgrid, sizeof(double), d->n->NM, fp);
 	fwrite(d->h->hmf[z_index], sizeof(double), d->n->NM, fp);
