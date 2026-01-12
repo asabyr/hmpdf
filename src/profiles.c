@@ -497,6 +497,7 @@ typedef struct
     double rproj_dens;
     double xc_dens; 
     double R200c_dens;
+    double rs_nfw;
 }
 density_params;
 
@@ -531,6 +532,13 @@ Battmodel_density_integrand_3D(double x_over_xc, void *params)
     return p->R200c_dens*p->xc_dens*pow(x_over_xc*p->R200c_dens*p->xc_dens, 2.0)*pow(x_over_xc, p->gamma_dens)*pow(1.0+pow(x_over_xc, p->alpha_dens),-(p->beta_dens+p->gamma_dens)/p->alpha_dens);
 }
 
+static double
+Battmodel_density_integrand_3D_r(double r, void *params)
+{
+    density_params *p = (density_params *)params;
+    return pow(r,2.0)*pow(r/p->R200c_dens/p->xc_dens, p->gamma_dens)*pow(1.0+pow(r/p->R200c_dens/p->xc_dens, p->alpha_dens),-(p->beta_dens+p->gamma_dens)/p->alpha_dens);
+}
+
 // IllustrisTNG density profiles 
 static double 
 TNG_density_primitive(hmpdf_obj *d, double M200c, double z, int n)
@@ -548,11 +556,25 @@ TNG_density_integrand(double z, void *params)
     return pow(r, p->gamma_dens)*pow(1.0+pow(r, p->alpha_dens), -p->beta_dens);
 }
 
+static double 
+TNG_density_integrand_fit(double r, void *params)
+{
+    density_params *p = (density_params *)params;
+    return pow(r, p->gamma_dens)*pow(1.0+pow(r,p->alpha_dens), -p->beta_dens);
+    
+}
 static double
 TNG_density_integrand_3D(double x_over_xc, void *params)
 {
     density_params *p = (density_params *)params; 
     return p->R200c_dens*p->xc_dens*pow(x_over_xc*p->R200c_dens*p->xc_dens, 2.0)*pow(x_over_xc, p->gamma_dens)*pow(1.0+pow(x_over_xc, p->alpha_dens), -p->beta_dens);
+}
+
+static double
+TNG_density_integrand_3D_r(double r, void *params)
+{
+    density_params *p = (density_params *)params;
+    return pow(r, 2.0)*pow(r/p->R200c_dens/p->xc_dens, p->gamma_dens)*pow(1+pow(r/p->R200c_dens/p->xc_dens, p->alpha_dens), -p->beta_dens);
 }
 
 //NFW
@@ -564,6 +586,12 @@ NFW_density_integrand(double z, void *params)
     return pow(r, -1.0)*pow(1.0+r, -2.0);
 }
 
+static double
+NFW_integrand_3D_r(double r, void *params)
+{
+    density_params *p = (density_params *)params;
+    return pow(r,2.0)*pow(r/p->rs_nfw, -1.0)*pow(1+r/p->rs_nfw, -2.0);
+}
 
 static int
 electron_mass_res(gsl_function *gsl_func, double Rmax, double Mnfw, double scaling_3D, double *Mres)
@@ -723,10 +751,12 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     //need to initialize these
     gsl_function integrand; 
     gsl_function integrand_3D;
+    gsl_function integrand_3D_r;
     density_params par;
     double xc;
     double scaling;
     double scaling_3D; 
+    
     //char *prof_name; 
     
     double rhos_nfw, rs_nfw;
@@ -749,6 +779,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     
     integrand.function = &Battmodel_density_integrand;
     integrand_3D.function = &Battmodel_density_integrand_3D;
+    integrand_3D_r.function = &Battmodel_density_integrand_3D_r;
 
     //rescaling from integration units to electron density units in pc/cm^3
     //scale by 1e10 to prevent numerical problems
@@ -761,10 +792,12 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     
     double P3D[d->p->Ntheta+1];
     double P3D_ne[d->p->Ntheta+1];
+    double P3D_scaled[d->p->Ntheta+1];
 
     for (int ii=0; ii<d->p->Ntheta+1; ii++){
         P3D[ii]=rho0*Battmodel_density_integrand_fit(d->p->decr_tgrid[ii]*d->p->rout_scale/xc, &par);
         P3D_ne[ii]=P3D[ii]/M_ATOMIC/d->c->mu_e;
+        P3D_scaled[ii]=P3D[ii]*d->c->rho_c[z_index]*d->c->Ob_0/d->c->Om_0*d->c->f_free/M_ATOMIC/d->c->mu_e*M_SOLAR_KG;
     }
     
     char buffer[512];
@@ -774,6 +807,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     fwrite(d->p->decr_tgrid, sizeof(double), d->p->Ntheta+1, fp);
     fwrite(P3D, sizeof(double), d->p->Ntheta+1, fp);
     fwrite(P3D_ne, sizeof(double), d->p->Ntheta+1, fp);
+    fwrite(P3D_scaled, sizeof(double), d->p->Ntheta+1, fp);
     fclose(fp);
     #endif 
     
@@ -796,7 +830,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
 
     integrand.function = &TNG_density_integrand;
     integrand_3D.function = &TNG_density_integrand_3D;    
-    
+    integrand_3D_r.function = &TNG_density_integrand_3D_r;
     //rescaling from integration units to electron density units in pc/cm^3
     //scale by 1e10 to prevent numerical problems
     
@@ -812,7 +846,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     
     for (int ii=0; ii<d->p->Ntheta+1; ii++){
     
-        P3D[ii]=ne0*TNG_density_integrand(d->p->decr_tgrid[ii]*d->p->rout_scale/xc, &par);
+        P3D[ii]=ne0*TNG_density_integrand_fit(d->p->decr_tgrid[ii]*d->p->rout_scale/xc, &par);
         P3D_ne[ii]=P3D[ii]/(XH_TNG*MPROTON);
         P3D_scaled[ii]=P3D[ii]*200.0/(XH_TNG*MPROTON)*d->c->rho_c[z_index]*M_SOLAR_KG*d->c->Ob_0/d->c->Om_0;    
     }
@@ -894,6 +928,39 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     }
 
     gsl_integration_workspace_free(ws);
+    
+    //check 3D integral numerically
+    par.rs_nfw=rs_nfw; 
+    double scaling_3D_nfw=d->c->f_free*d->c->Ob_0/d->c->Om_0*4*M_PI*rhos_nfw;
+    integrand_3D_r.function = &NFW_integrand_3D_r;
+    integrand_3D_r.params = &par; 
+    
+    gsl_integration_workspace *ws_3D_r;
+    SAFEALLOC(ws_3D_r, gsl_integration_workspace_alloc(5000));
+    double err_3D_r;
+    double percent_err_3D_r;
+    double M_e_r;
+    //SAFEALLOC_NORETURN(M_e_r, malloc(sizeof(double)));
+
+    SAFEGSL(gsl_integration_qag(&integrand_3D_r, 0.0, Rout*rs_nfw,
+                                d->n->Mgrid[M_index]*BATTINTEGR_EPSABS/100.0/scaling_3D_nfw, BATTINTEGR_EPSREL,
+                                5000, BATTINTEGR_KEY,
+                                ws_3D_r, &M_e_r, &err_3D_r));
+
+    percent_err_3D_r = err_3D_r/M_e_r*100.0;
+
+    if (percent_err_3D_r>0.05){
+    printf("percent error %.18f\n", percent_err_3D_r);
+    exit(0);
+    }
+
+    M_e_r*=scaling_3D_nfw;
+    gsl_integration_workspace_free(ws_3D_r);
+
+    //printf("ratio Me%.18f\n",d->p->M_e_halos[z_index][M_index]/M_e_r);
+    if (fabs(d->p->M_e_halos[z_index][M_index]/M_e_r-1.0)>1e-6){
+    printf("Me ratio not close to 1%.18f\n", d->p->M_e_halos[z_index][M_index]/M_e_r);
+    exit(0);}
 
     }
 
@@ -908,6 +975,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     Rout /= R200c * xc;
     integrand.params = &par;
     integrand_3D.params = &par;
+    integrand_3D_r.params = &par;
     gsl_integration_workspace *ws;
     SAFEALLOC(ws, gsl_integration_workspace_alloc(BATTINTEGR_LIMIT));
     
@@ -1022,6 +1090,36 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     }
     d->p->M_e_halos[z_index][M_index]*=scaling_3D;
     gsl_integration_workspace_free(ws_3D);
+    
+    //integrate 3D profiles in r
+    
+    gsl_integration_workspace *ws_3D_r;
+    SAFEALLOC(ws_3D_r, gsl_integration_workspace_alloc(BATTINTEGR_LIMIT));
+    double err_3D_r;
+    double percent_err_3D_r; 
+    double M_e_r;
+    //SAFEALLOC_NORETURN(M_e_r, malloc(sizeof(double)));
+
+    SAFEGSL(gsl_integration_qag(&integrand_3D_r, 0.0, Rout*R200c*xc, 
+                                d->n->Mgrid[M_index]*BATTINTEGR_EPSABS/100.0/scaling_3D, BATTINTEGR_EPSREL,
+                                BATTINTEGR_LIMIT, BATTINTEGR_KEY,
+                                ws_3D_r, &M_e_r, &err_3D_r)); 
+
+    percent_err_3D_r = err_3D_r/M_e_r*100.0;
+
+    if (percent_err_3D_r>0.05){
+    printf("percent error %.18f\n", percent_err_3D_r);
+    exit(0);
+    }
+
+    M_e_r*=scaling_3D;
+    gsl_integration_workspace_free(ws_3D_r);
+
+    //printf("ratio Me%.18f\n",d->p->M_e_halos[z_index][M_index]/M_e_r);
+    if (fabs(d->p->M_e_halos[z_index][M_index]/M_e_r-1.0)>1e-6){
+    printf("Me ratio not close to 1%.18f\n", d->p->M_e_halos[z_index][M_index]/M_e_r);
+    exit(0);
+    }
     }
     
     ENDFCT
