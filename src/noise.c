@@ -259,8 +259,10 @@ create_noise_sigmasq(hmpdf_obj *d)
     HMPDFCHECK(p.status, "error encountered during integration.");
 
     // correct normalization
-    d->ns->sigmasq *= 0.5 * M_1_PI;
-
+    if (d->p->stype == hmpdf_electron_density){
+    d->ns->sigmasq *= 0.5 * M_1_PI/pow(1e10,2.0);}
+    else{
+    d->ns->sigmasq *= 0.5 * M_1_PI;}
     ENDFCT
 }//}}}
 
@@ -536,6 +538,7 @@ init_noise(hmpdf_obj *d)
         d->ns->have_noise = 1;
 
         SAFEHMPDF(create_noise_sigmasq(d));
+        //printf("variance %.18e\n", d->ns->sigmasq);
         SAFEHMPDF(create_noisy_grids(d));
         SAFEHMPDF(create_toepl(d));
     }
