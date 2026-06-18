@@ -345,6 +345,8 @@ init_params(hmpdf_obj *d, param *p)
            d->n->Mweights_file, str_type, def.Mweights_f);
     INIT_P(hmpdf_out_dir_path,
             d->n->out_dir_path, str_type, def.out_dir_p); 
+    INIT_P(hmpdf_f_scatter,
+           d->op->f_scatter, dbl_type, def.f_scatter);
     HMPDFCHECK(ctr != hmpdf_end_configs, "Not all params filled, ctr = %d.", ctr);
 
     ENDFCT

@@ -69,6 +69,83 @@ correct_phase1d(hmpdf_obj *d, double complex *x, int sgn)
     ENDFCT
 }//}}}
 
+
+
+
+////////////////////
+
+static int
+deposit_gaussian(hmpdf_obj *d, double *arr, double s, double w)
+// deposits weight w into arr as a normalized Gaussian of width f*|s|
+// centered on signal value s. Falls back to single-bin deposit when
+// the kernel is narrower than the grid spacing.
+{//{{{
+    STARTFCT
+
+    double ds = d->n->signalgrid[1] - d->n->signalgrid[0]; // grid spacing
+    double smin = d->n->signalgrid[0];
+    long N = d->n->Nsignal;
+
+    double sigma_s = d->op->f_scatter * fabs(s); //dispersion depends on signal
+    double sigma_bins = sigma_s / ds;
+
+    // center position in fractional bin units
+    double center = (s - smin) / ds;
+
+    if (sigma_bins < 0.5)
+    // kernel unresolved: fall back to linear (2-bin) deposit
+    {
+        long j0 = (long)floor(center);
+        double frac = center - (double)j0;
+        if (j0 >= 0 && j0 < N)
+        {
+            arr[j0] += w * (1.0 - frac);
+        }
+        if (j0+1 >= 0 && j0+1 < N)
+        {
+            arr[j0+1] += w * frac;
+        }
+    }
+    else
+    {
+        // truncate at +-4 sigma
+        long jlo = (long)floor(center - 4.0*sigma_bins);
+        long jhi = (long)ceil (center + 4.0*sigma_bins);
+        if (jlo < 0)    { jlo = 0;   }
+        if (jhi > N-1)  { jhi = N-1; }
+
+        // first pass: compute kernel and its sum (for renormalization,
+        // since truncation + edge clipping breaks unit normalization)
+        double norm = 0.0;
+        for (long j=jlo; j<=jhi; j++)
+        {
+            double dx = ((double)j - center) / sigma_bins;
+            norm += exp(-0.5 * dx * dx);
+        }
+
+        if (norm <= 0.0)
+        // degenerate (shouldn't happen given the 0.5 cutoff), but guard
+        {
+            long j0 = (long)floor(center + 0.5);
+            if (j0 >= 0 && j0 < N) { arr[j0] += w; }
+        }
+        else
+        {
+            // second pass: deposit, renormalized so total weight == w
+            double inv_norm = w / norm;
+            for (long j=jlo; j<=jhi; j++)
+            {
+                double dx = ((double)j - center) / sigma_bins;
+                arr[j] += exp(-0.5 * dx * dx) * inv_norm;
+            }
+        }
+    }
+
+    ENDFCT
+}//}}}
+
+////////////////////
+
 static int
 op_segmentsum(hmpdf_obj *d, int z_index, int M_index, double *au, double *ac)
 {//{{{
@@ -86,10 +163,22 @@ op_segmentsum(hmpdf_obj *d, int z_index, int M_index, double *au, double *ac)
              ii < bt.len;
              (bt.incr==1) ? signalindex++ : signalindex--, ii++)
         {
-            au[signalindex] += bt.data[ii] * M_PI * n
-                               * d->n->Mweights[M_index];
-            ac[signalindex] += bt.data[ii] * M_PI * n * b
-                               * d->n->Mweights[M_index];
+            double s = d->n->signalgrid[signalindex];
+            double wu = bt.data[ii] * M_PI * n     * d->n->Mweights[M_index];
+            double wc = bt.data[ii] * M_PI * n * b * d->n->Mweights[M_index];
+            
+            if (d->op->f_scatter!=1.0){
+            
+            SAFEHMPDF(deposit_gaussian(d, au, s, wu));
+            SAFEHMPDF(deposit_gaussian(d, ac, s, wc));
+            
+            }
+            else{
+            
+            au[signalindex] += wu;
+            ac[signalindex] += wc;
+
+            }
         }
         delete_batch(&bt);
     }

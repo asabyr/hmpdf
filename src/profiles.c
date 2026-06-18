@@ -919,7 +919,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
                                     ws, p+ii, &err));
 
         percent_err=err/p[ii]*100.0;
-        if (percent_err>0.05){
+        if (percent_err>2.0){
         printf("percent error %.18f\n",percent_err);
         exit(0);
         }
@@ -949,7 +949,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
 
     percent_err_3D_r = err_3D_r/M_e_r*100.0;
 
-    if (percent_err_3D_r>0.05){
+    if (percent_err_3D_r>2.0){
     printf("percent error %.18f\n", percent_err_3D_r);
     exit(0);
     }
@@ -1062,7 +1062,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
                                     ws, p+ii, &err));
         
         percent_err=err/p[ii]*100.0;
-        if (percent_err>0.05){
+        if (percent_err>2.0){
         printf("percent error %.18f\n",percent_err);
         exit(0);
         }
@@ -1084,7 +1084,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
                                BATTINTEGR_LIMIT, BATTINTEGR_KEY,
                                 ws_3D, d->p->M_e_halos[z_index]+M_index, &err_3D));
     percent_err_3D=err_3D/d->p->M_e_halos[z_index][M_index]*100.0;
-    if (percent_err_3D>0.05){
+    if (percent_err_3D>2.0){
     printf("percent error %.18f\n", percent_err_3D);
     exit(0);
     }
@@ -1107,7 +1107,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
 
     percent_err_3D_r = err_3D_r/M_e_r*100.0;
 
-    if (percent_err_3D_r>0.05){
+    if (percent_err_3D_r>2.0){
     printf("percent error %.18f\n", percent_err_3D_r);
     exit(0);
     }

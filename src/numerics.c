@@ -182,11 +182,11 @@ create_grids(hmpdf_obj *d)
                                 1/*neutralize weights*/));
     
     //save z_grid
-    char buffer_z[512];
-    sprintf(buffer_z, "/scratch/07833/tg871330/software_scratch/hmpdf/data/hmpdf_zgrid_N%d.bin", d->n->Nz);
-    FILE *fp_z = fopen(buffer_z, "w");
-    fwrite(d->n->zgrid,sizeof(double), d->n->Nz, fp_z);
-    fclose(fp_z);
+ //   char buffer_z[512];
+ //   sprintf(buffer_z, "/scratch/07833/tg871330/software_scratch/hmpdf/data/hmpdf_zgrid_N%d.bin", d->n->Nz);
+ //   FILE *fp_z = fopen(buffer_z, "w");
+ //   fwrite(d->n->zgrid,sizeof(double), d->n->Nz, fp_z);
+ //   fclose(fp_z);
     }
    
     SAFEALLOC(d->n->Mgrid,    malloc(d->n->NM * sizeof(double)));
@@ -214,11 +214,11 @@ create_grids(hmpdf_obj *d)
     }
     
     //save M_grid
-    char buffer_M[512];
-    sprintf(buffer_M, "/scratch/07833/tg871330/software_scratch/hmpdf/data/hmpdf_Mgrid_N%d.bin", d->n->NM); 
-    FILE *fp_M = fopen(buffer_M, "w"); 
-    fwrite(d->n->Mgrid, sizeof(double), d->n->NM, fp_M); 
-    fclose(fp_M); 
+ //   char buffer_M[512];
+ //   sprintf(buffer_M, "/scratch/07833/tg871330/software_scratch/hmpdf/data/hmpdf_Mgrid_N%d.bin", d->n->NM); 
+ //   FILE *fp_M = fopen(buffer_M, "w"); 
+ //   fwrite(d->n->Mgrid, sizeof(double), d->n->NM, fp_M); 
+ //   fclose(fp_M); 
     
     }
     SAFEALLOC(d->n->signalgrid, malloc(d->n->Nsignal * sizeof(double)));
