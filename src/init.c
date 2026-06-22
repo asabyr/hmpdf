@@ -347,6 +347,12 @@ init_params(hmpdf_obj *d, param *p)
             d->n->out_dir_path, str_type, def.out_dir_p); 
     INIT_P(hmpdf_f_scatter,
            d->op->f_scatter, dbl_type, def.f_scatter);
+    INIT_P(hmpdf_xc_f_sigma, 
+           d->p->xc_f_sigma, dbl_type, def.xc_f_sigma);
+    INIT_P(hmpdf_xc_sample_Nxc,
+            d->p->xc_sample_Nxc, int_type, def.xc_sample_Nxc);
+    INIT_P(hmpdf_xc_sample_dxc,
+            d->p->xc_sample_dxc, dbl_type, def.xc_sample_dxc);
     HMPDFCHECK(ctr != hmpdf_end_configs, "Not all params filled, ctr = %d.", ctr);
 
     ENDFCT

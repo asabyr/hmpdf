@@ -286,17 +286,17 @@ get_DM_IGM(hmpdf_obj *d)
 	    mass_halos_m[z_index]=0.0; 
 	
     //save electron mass at each redshift for all halo masses
-	char buffer_Me[512];
-	sprintf(buffer_Me, "%s/f_IGM/Me_%s_%.1fR%s_z%.8f_abserr%.18f_relerr%.18f.bin",d->n->out_dir_path, d->p->prof_name, d->p->rout_scale, d->p->prof_mdef_str, d->n->zgrid[z_index], BATTINTEGR_EPSABS, BATTINTEGR_EPSREL);
-	FILE *fp_Me = fopen(buffer_Me, "w");
-	fwrite(d->n->Mgrid,  sizeof(double), d->n->NM, fp_Me);
-	fwrite(d->p->M_e_halos[z_index],sizeof(double), d->n->NM, fp_Me);
-	fclose(fp_Me);
+	//char buffer_Me[512];
+	//sprintf(buffer_Me, "%s/f_IGM/Me_%s_%.1fR%s_z%.8f_abserr%.18f_relerr%.18f.bin",d->n->out_dir_path, d->p->prof_name, d->p->rout_scale, d->p->prof_mdef_str, d->n->zgrid[z_index], BATTINTEGR_EPSABS, BATTINTEGR_EPSREL);
+	//FILE *fp_Me = fopen(buffer_Me, "w");
+	//fwrite(d->n->Mgrid,  sizeof(double), d->n->NM, fp_Me);
+	//fwrite(d->p->M_e_halos[z_index],sizeof(double), d->n->NM, fp_Me);
+	//fclose(fp_Me);
     
    
 	for (int M_index=0; M_index<d->n->NM; M_index++){
 	    
-	    mass_halos_e[z_index]+=d->h->hmf[z_index][M_index]*d->p->M_e_halos[z_index][M_index]*d->n->Mweights[M_index];
+	    mass_halos_e[z_index]+=d->h->hmf[z_index][M_index]*d->p->M_e_halos[z_index][M_index][0]*d->n->Mweights[M_index];
 	    mass_halos_m[z_index]+=d->h->hmf[z_index][M_index]*d->n->Mgrid[M_index]*d->n->Mweights[M_index];
 	}	
 	mass_halos_e[z_index]*=d->c->volume_tot[z_index];

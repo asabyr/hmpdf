@@ -369,8 +369,8 @@ bnu_Tinker10(hmpdf_obj *d, double nu, double z)
 
     double delta_mean=get_delta_mean_from_delta_crit_at_z(d, 200.,z);
     y = log(delta_mean)/M_LN10;
-    printf("y%.18f\n",y);}
-
+    //printf("y%.18f\n",y);}
+    }
     else if (d->h->HMF_mdef==hmpdf_mdef_m){
     y = 2.0 + M_LN2/M_LN10;} // y = log_10(200)}
 

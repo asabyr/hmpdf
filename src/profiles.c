@@ -14,6 +14,7 @@
 #include <gsl/gsl_dht.h>
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_fit.h>
+#include <gsl/gsl_cdf.h>
 
 #include "configs.h"
 #include "utils.h"
@@ -50,6 +51,12 @@ null_profiles(hmpdf_obj *d)
     d->p->M_e_halos = NULL;
     d->p->prof_name = NULL;
     d->p->prof_mdef_str = NULL;
+    d->p->xc_sample = NULL;
+    d->p->xc_prob = NULL; 
+    d->p->xc_prob_tot = 0.0; 
+    d->p->xc_sigma = 0.0; 
+    d->p->xc_mean = 0.0; 
+
     ENDFCT
 }//}}}
 
@@ -87,13 +94,20 @@ reset_profiles(hmpdf_obj *d)
                 {
                     if (d->p->profiles[z_index][M_index] != NULL)
                     {
-                        free(d->p->profiles[z_index][M_index]);
+                    for (int prof_index=0; prof_index<d->p->xc_sample_Nxc; prof_index++){
+                        
+                        if (d->p->profiles[z_index][M_index][prof_index] != NULL)
+                    {
+                        free(d->p->profiles[z_index][M_index][prof_index]);
                     }
                 }
-                free(d->p->profiles[z_index]);
+                free(d->p->profiles[z_index][M_index]);
             }
         }
-        free(d->p->profiles);
+        free(d->p->profiles[z_index]);
+    }
+    }
+    free(d->p->profiles);
     }
     if (d->p->conj_profiles != NULL)
     {
@@ -105,7 +119,13 @@ reset_profiles(hmpdf_obj *d)
                 {
                     if (d->p->conj_profiles[z_index][M_index] != NULL)
                     {
-                        free(d->p->conj_profiles[z_index][M_index]);
+                    for (int prof_index=0; prof_index<d->p->xc_sample_Nxc; prof_index++){
+                        
+                        if (d->p->conj_profiles[z_index][M_index][prof_index] != NULL){
+                        free(d->p->conj_profiles[z_index][M_index][prof_index]); 
+                        }
+                    }
+                    free(d->p->profiles[z_index][M_index]);
                     }
                 }
                 free(d->p->conj_profiles[z_index]);
@@ -121,11 +141,17 @@ reset_profiles(hmpdf_obj *d)
             {
                 for (int M_index=0; M_index<d->n->NM; M_index++)
                 {
-                    if (d->p->filtered_profiles[z_index][M_index] != NULL)
+                    
+                if (d->p->filtered_profiles[z_index][M_index] != NULL)
                     {
-                        free(d->p->filtered_profiles[z_index][M_index]);
+                    for (int prof_index=0; prof_index<d->p->xc_sample_Nxc; prof_index++){
+                        if (d->p->filtered_profiles[z_index][M_index][prof_index]!= NULL){
+                        free(d->p->filtered_profiles[z_index][M_index][prof_index]);
+                        }
                     }
+                free(d->p->profiles[z_index][M_index]);
                 }
+            }
                 free(d->p->filtered_profiles[z_index]);
             }
         }
@@ -141,7 +167,7 @@ reset_profiles(hmpdf_obj *d)
                 {
                     if (d->p->segment_boundaries[z_index][M_index] != NULL)
                     {
-                        free(d->p->segment_boundaries[z_index][M_index]);
+                        free(d->p->segment_boundaries[z_index][M_index]);                
                     }
                 }
                 free(d->p->segment_boundaries[z_index]);
@@ -731,8 +757,9 @@ brent(gsl_function *gsl_func, double x1, double x2, double tol, double fa, doubl
 static int
 electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
             double mass_resc,
-            double theta_out, double Rout, double *p)
+            double theta_out, double Rout, int prof_index, double *p)
 {
+   //printf("entered profile"); 
     STARTFCT
     double M200c, R200c;
     if (d->h->HMF_mdef==hmpdf_mdef_c){
@@ -822,10 +849,22 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     ne0=TNG_density_primitive(d, M200c, d->n->zgrid[z_index], 0);
     xc=TNG_density_primitive(d, M200c, d->n->zgrid[z_index], 1);
     
+    if (prof_index==0){
+    d->p->xc_mean=xc;
+//    printf("xc_mean %.3f\n",d->p->xc_mean);
+    d->p->xc_sigma=d->p->xc_f_sigma*xc;
+//    printf("xc_sigma %.3f\n",d->p->xc_sigma);
+//    printf("defined variance %.3f\n",d->p->xc_sigma);
+    }else {
+    xc+=d->p->xc_sigma*d->p->xc_sample[prof_index];
+//    printf("xc %.3f\n",xc);
+    }
+    
     par.alpha_dens = TNG_density_primitive(d, M200c, d->n->zgrid[z_index], 2);
     par.beta_dens = TNG_density_primitive(d, M200c, d->n->zgrid[z_index], 3);
     par.gamma_dens = TNG_density_primitive(d, M200c, d->n->zgrid[z_index], 4);
-    par.xc_dens = TNG_density_primitive(d, M200c, d->n->zgrid[z_index], 1);
+    //par.xc_dens = TNG_density_primitive(d, M200c, d->n->zgrid[z_index], 1);
+    par.xc_dens = xc;
     par.R200c_dens = R200c;
 
     integrand.function = &TNG_density_integrand;
@@ -852,7 +891,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     }
     
     char buffer[512];
-    sprintf(buffer, "%s/profiles/profile3D_%s_z%.18f_M200c%.18e.bin", d->n->out_dir_path, d->p->prof_name, d->n->zgrid[z_index], M200c);
+    sprintf(buffer, "%s/profiles/profile3D_%s_z%.18f_M200c%.18e_xc%.18f.bin", d->n->out_dir_path, d->p->prof_name, d->n->zgrid[z_index], M200c, xc);
     FILE *fp = fopen(buffer, "w");
     fwrite(&d->p->rout_scale,sizeof(double),1,fp);
     fwrite(d->p->decr_tgrid, sizeof(double), d->p->Ntheta+1, fp);
@@ -868,7 +907,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     d->p->prof_name="NFW";
      
     //3D integral is analytic
-    d->p->M_e_halos[z_index][M_index]=d->c->f_free*d->c->Ob_0/d->c->Om_0*4*M_PI*rhos_nfw*pow(rs_nfw,3.0)*(log(1+Rout/rs_nfw)-Rout/(rs_nfw+Rout));
+    d->p->M_e_halos[z_index][M_index][prof_index]=d->c->f_free*d->c->Ob_0/d->c->Om_0*4*M_PI*rhos_nfw*pow(rs_nfw,3.0)*(log(1+Rout/rs_nfw)-Rout/(rs_nfw+Rout));
     
     #ifdef SAVE_PROF
     
@@ -919,7 +958,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
                                     ws, p+ii, &err));
 
         percent_err=err/p[ii]*100.0;
-        if (percent_err>2.0){
+        if (percent_err>1000.0){
         printf("percent error %.18f\n",percent_err);
         exit(0);
         }
@@ -949,7 +988,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
 
     percent_err_3D_r = err_3D_r/M_e_r*100.0;
 
-    if (percent_err_3D_r>2.0){
+    if (percent_err_3D_r>1000.0){
     printf("percent error %.18f\n", percent_err_3D_r);
     exit(0);
     }
@@ -958,8 +997,8 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     gsl_integration_workspace_free(ws_3D_r);
 
     //printf("ratio Me%.18f\n",d->p->M_e_halos[z_index][M_index]/M_e_r);
-    if (fabs(d->p->M_e_halos[z_index][M_index]/M_e_r-1.0)>1e-6){
-    printf("Me ratio not close to 1%.18f\n", d->p->M_e_halos[z_index][M_index]/M_e_r);
+    if (fabs(d->p->M_e_halos[z_index][M_index][prof_index]/M_e_r-1.0)>1e-6){
+    printf("Me ratio not close to 1%.18f\n", d->p->M_e_halos[z_index][M_index][prof_index]/M_e_r);
     exit(0);}
 
     }
@@ -1062,7 +1101,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
                                     ws, p+ii, &err));
         
         percent_err=err/p[ii]*100.0;
-        if (percent_err>2.0){
+        if (percent_err>1000.0){
         printf("percent error %.18f\n",percent_err);
         exit(0);
         }
@@ -1082,13 +1121,13 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     SAFEGSL(gsl_integration_qag(&integrand_3D, 0.0, Rout,
                                 d->n->Mgrid[M_index]*BATTINTEGR_EPSABS/100.0/scaling_3D, BATTINTEGR_EPSREL,
                                BATTINTEGR_LIMIT, BATTINTEGR_KEY,
-                                ws_3D, d->p->M_e_halos[z_index]+M_index, &err_3D));
-    percent_err_3D=err_3D/d->p->M_e_halos[z_index][M_index]*100.0;
-    if (percent_err_3D>2.0){
+                                ws_3D, d->p->M_e_halos[z_index][M_index]+prof_index, &err_3D));
+    percent_err_3D=err_3D/d->p->M_e_halos[z_index][M_index][prof_index]*100.0;
+    if (percent_err_3D>1000.0){
     printf("percent error %.18f\n", percent_err_3D);
     exit(0);
     }
-    d->p->M_e_halos[z_index][M_index]*=scaling_3D;
+    d->p->M_e_halos[z_index][M_index][prof_index]*=scaling_3D;
     gsl_integration_workspace_free(ws_3D);
     
     //integrate 3D profiles in r
@@ -1107,7 +1146,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
 
     percent_err_3D_r = err_3D_r/M_e_r*100.0;
 
-    if (percent_err_3D_r>2.0){
+    if (percent_err_3D_r>1000.0){
     printf("percent error %.18f\n", percent_err_3D_r);
     exit(0);
     }
@@ -1116,8 +1155,8 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
     gsl_integration_workspace_free(ws_3D_r);
 
     //printf("ratio Me%.18f\n",d->p->M_e_halos[z_index][M_index]/M_e_r);
-    if (fabs(d->p->M_e_halos[z_index][M_index]/M_e_r-1.0)>1e-6){
-    printf("Me ratio not close to 1%.18f\n", d->p->M_e_halos[z_index][M_index]/M_e_r);
+    if (fabs(d->p->M_e_halos[z_index][M_index][prof_index]/M_e_r-1.0)>1e-6){
+    printf("Me ratio not close to 1%.18f\n", d->p->M_e_halos[z_index][M_index][prof_index]/M_e_r);
     exit(0);
     }
     }
@@ -1126,7 +1165,7 @@ electron_density_profile(hmpdf_obj *d, int z_index, int M_index,
 }
 
 static int
-profile(hmpdf_obj *d, int z_index, int M_index, double *p)
+profile(hmpdf_obj *d, int z_index, int M_index, int prof_index, double *p)
 // returns theta_out and writes the profile into return value
 {//{{{
     STARTFCT
@@ -1176,7 +1215,7 @@ profile(hmpdf_obj *d, int z_index, int M_index, double *p)
     {
         SAFEHMPDF(electron_density_profile(d, z_index, M_index,
                                    mass_resc,
-                                   theta_out, Rout, p+1));
+                                   theta_out, Rout, prof_index, p+1));
     }
     else
     {
@@ -1231,11 +1270,60 @@ create_profiles(hmpdf_obj *d)
 
     HMPDFPRINT(2, "\tcreate_profiles\n");
     
-    SAFEALLOC(d->p->profiles, malloc(d->n->Nz * sizeof(double **)));
+    fprintf(stderr, "Ntheta=%d\n", d->p->Ntheta);
+    fprintf(stderr, "entering create_profiles\n");
+    fprintf(stderr, "Nz=%d NM=%d Ntheta=%d xc_sample_Nxc=%d\n", 
+        d->n->Nz, d->n->NM, d->p->Ntheta, d->p->xc_sample_Nxc);
+    fprintf(stderr, "d->p->profiles=%p\n", (void*)d->p->profiles); 
+    
+    if (d->p->xc_sample_Nxc>0){
+    
+    SAFEALLOC_NORETURN(d->p->xc_sample, malloc(d->p->xc_sample_Nxc*sizeof(double))); 
+    SAFEALLOC_NORETURN(d->p->xc_prob, malloc(d->p->xc_sample_Nxc*sizeof(double))); 
+    d->p->xc_sample[0]=0.0;
+    if (d->p->xc_sample_Nxc<=1){
+    
+    d->p->xc_prob[0]=1.0;
+    d->p->xc_prob_tot=1.0; 
+
+    }else{ 
+    d->p->xc_prob[0]=gsl_cdf_ugaussian_P(0.0+d->p->xc_sample_dxc/2.0)-gsl_cdf_ugaussian_P(0.0-d->p->xc_sample_dxc/2.0);
+    d->p->xc_prob_tot=d->p->xc_prob[0];}
+    
+    int half=(d->p->xc_sample_Nxc-1)/2;
+    double upper;
+    double lower;
+    
+    for (int i=1; i<d->p->xc_sample_Nxc; i++){
+        if (i <= half){
+        d->p->xc_sample[i]=(-half-1+i)*d->p->xc_sample_dxc;
+        }else{
+        d->p->xc_sample[i]=(i-half)*d->p->xc_sample_dxc;
+    }   
+        upper=d->p->xc_sample[i]+d->p->xc_sample_dxc/2.0;
+        lower=d->p->xc_sample[i]-d->p->xc_sample_dxc/2.0;
+        printf("upper %.3f\n",upper);
+        printf("lower %.3f\n", lower); 
+        d->p->xc_prob[i]=gsl_cdf_ugaussian_P(upper)-gsl_cdf_ugaussian_P(lower);
+        printf("prob %.3f\n", d->p->xc_prob[i]);  
+        d->p->xc_prob_tot+=d->p->xc_prob[i];
+    }
+    
+    printf("prob tot %.3f\n",d->p->xc_prob_tot);
+
+   // for (int j=0; j<d->p->xc_sample_Nxc; j++){
+    
+   //     d->p->xc_prob[j]/=d->p->xc_prob_tot;
+   //     printf("prob %.3f\n", d->p->xc_prob[j]);
+    //}
+    }
+    
+    
+    SAFEALLOC(d->p->profiles, malloc(d->n->Nz * sizeof(double ***)));
     SETARRNULL(d->p->profiles, d->n->Nz);
 
     if (d->p->stype == hmpdf_electron_density){
-    SAFEALLOC(d->p->M_e_halos, malloc(d->n->Nz * sizeof(double *)));
+    SAFEALLOC(d->p->M_e_halos, malloc(d->n->Nz * sizeof(double **)));
     SETARRNULL(d->p->M_e_halos, d->n->Nz);}
 
     #ifdef _OPENMP
@@ -1244,35 +1332,59 @@ create_profiles(hmpdf_obj *d)
     for (int z_index=0; z_index<d->n->Nz; z_index++)
     {
         CONTINUE_IF_ERR
-        SAFEALLOC_NORETURN(d->p->profiles[z_index], malloc(d->n->NM * sizeof(double *)));
+        SAFEALLOC_NORETURN(d->p->profiles[z_index], malloc(d->n->NM * sizeof(double **)));
         SETARRNULL(d->p->profiles[z_index], d->n->NM);
     	
 	if (d->p->stype == hmpdf_electron_density){
-		SAFEALLOC_NORETURN(d->p->M_e_halos[z_index], malloc(d->n->NM * sizeof(double)));
+		SAFEALLOC_NORETURN(d->p->M_e_halos[z_index], malloc(d->n->NM * sizeof(double *)));
+        SETARRNULL(d->p->M_e_halos[z_index], d->n->NM);
 	}
 	    
 	for (int M_index=0; M_index<d->n->NM; M_index++)
         {
+        
+        CONTINUE_IF_ERR
+        SAFEALLOC_NORETURN(d->p->profiles[z_index][M_index], malloc(d->p->xc_sample_Nxc*sizeof(double *)));
+        SETARRNULL(d->p->profiles[z_index][M_index],d->p->xc_sample_Nxc);
+        
+        if (d->p->stype == hmpdf_electron_density){
+        SAFEALLOC_NORETURN(d->p->M_e_halos[z_index][M_index], malloc(d->p->xc_sample_Nxc * sizeof(double)));
+        //SETARRNULL(d->p->M_e_halos[z_index][M_index], d->p->xc_sample_Nxc);
+        }
+        //fprintf(stderr, "profiles[0][0]=%p\n", (void*)d->p->profiles[0][0]);
+        for (int prof_index=0; prof_index<d->p->xc_sample_Nxc; prof_index++){
+            
+        //   if (d->p->profiles[z_index][M_index][prof_index] == NULL)
+        //{   
+        //fprintf(stderr, "ERROR: profile[%d][%d][%d] allocation failed\n", 
+        //        z_index, M_index, prof_index);
+        //continue;
+        //} 
             CONTINUE_IF_ERR
-            SAFEALLOC_NORETURN(d->p->profiles[z_index][M_index],
+            SAFEALLOC_NORETURN(d->p->profiles[z_index][M_index][prof_index],
                                malloc((d->p->Ntheta+2) * sizeof(double)));
             CONTINUE_IF_ERR 
-            SAFEHMPDF_NORETURN(profile(d, z_index, M_index,
-                                       d->p->profiles[z_index][M_index]));
+            SAFEHMPDF_NORETURN(profile(d, z_index, M_index,prof_index,
+                                       d->p->profiles[z_index][M_index][prof_index]));
             CONTINUE_IF_ERR
             SAFEHMPDF_NORETURN(fix_endpoints(d->p->Ntheta, d->p->decr_tgrid,
-                                             d->p->profiles[z_index][M_index]+1));
+                                             d->p->profiles[z_index][M_index][prof_index]+1));
 	        #ifdef SAVE_PROF
+            double xc=d->p->xc_sample[prof_index]*d->p->xc_sigma;
             char buffer[512];
-            sprintf(buffer, "%s/profiles/profile_%s_z%.18f_M%.18e_abserr%.18e_relerr%.18e.bin", d->n->out_dir_path, d->p->prof_name,  d->n->zgrid[z_index], d->n->Mgrid[M_index], BATTINTEGR_EPSABS,BATTINTEGR_EPSREL);
+            sprintf(buffer, "%s/profiles/profile_%s_z%.18f_M%.18e_abserr%.18e_relerr%.18e_xc%.18f.bin", d->n->out_dir_path, d->p->prof_name,  d->n->zgrid[z_index], d->n->Mgrid[M_index], BATTINTEGR_EPSABS,BATTINTEGR_EPSREL, xc);
             FILE *fp = fopen(buffer, "w");
-	        double theta_max=d->p->profiles[z_index][M_index][0];
+	        double theta_max=d->p->profiles[z_index][M_index][prof_index][0];
 	        fwrite(&theta_max, sizeof(double), 1, fp);
 	        fwrite(d->p->decr_tgrid,sizeof(double),d->p->Ntheta+1, fp);
-	        fwrite(d->p->profiles[z_index][M_index]+1, sizeof(double), d->p->Ntheta+1, fp);
+	        fwrite(d->p->profiles[z_index][M_index][prof_index]+1, sizeof(double), d->p->Ntheta+1, fp);
             fclose(fp);
             #endif
             CONTINUE_IF_ERR
+            //fprintf(stderr, "after profile(): profiles[%d][%d][%d]=%p\n",
+        //z_index, M_index, prof_index,
+        //(void*)d->p->profiles[z_index][M_index][prof_index]);
+            //exit(0); 
             // if requested, save corresponding profiles to file
             if (d->p->tot_profiles_indices)
             {
@@ -1290,7 +1402,7 @@ create_profiles(hmpdf_obj *d)
             }
         }
     }
-
+}
     ENDFCT
 }//}}}
 
@@ -1306,11 +1418,13 @@ create_conj_profiles(hmpdf_obj *d)
     
     // prepare the Hankel transform work space
     SAFEALLOC(d->p->dht_ws, gsl_dht_new(d->p->Ntheta, 0, 1.0));
-    SAFEALLOC(d->p->conj_profiles, malloc(d->n->Nz * sizeof(double **)));
+    SAFEALLOC(d->p->conj_profiles, malloc(d->n->Nz * sizeof(double ***)));
     SETARRNULL(d->p->conj_profiles, d->n->Nz);
+
     #ifdef _OPENMP
     #   pragma omp parallel for num_threads(d->Ncores) schedule(static)
     #endif
+
     for (int z_index=0; z_index<d->n->Nz; z_index++)
     {
         CONTINUE_IF_ERR
@@ -1320,22 +1434,31 @@ create_conj_profiles(hmpdf_obj *d)
         SAFEALLOC_NORETURN(temp, malloc(d->p->Ntheta * sizeof(double)));
         CONTINUE_IF_ERR
         SAFEALLOC_NORETURN(d->p->conj_profiles[z_index],
-                           malloc(d->n->NM * sizeof(double *)));
+                           malloc(d->n->NM * sizeof(double **)));
         CONTINUE_IF_ERR
         SETARRNULL(d->p->conj_profiles[z_index], d->n->NM);
+        
         for (int M_index=0; M_index<d->n->NM; M_index++)
         {
             CONTINUE_IF_ERR
             SAFEALLOC_NORETURN(d->p->conj_profiles[z_index][M_index],
+                               malloc(d->p->xc_sample_Nxc * sizeof(double *)));
+            //CONTINUE_IF_ERR
+            //SETARRNULL(d->p->conj_profiles[z_index][M_index], d->p->xc_sample_Nxc);
+
+        for (int prof_index=0; prof_index<d->p->xc_sample_Nxc; prof_index++){
+            CONTINUE_IF_ERR
+            SAFEALLOC_NORETURN(d->p->conj_profiles[z_index][M_index][prof_index],
                                malloc((d->p->Ntheta+1) * sizeof(double)));
             CONTINUE_IF_ERR
-            reverse(d->p->Ntheta, d->p->profiles[z_index][M_index]+1, temp);
+            reverse(d->p->Ntheta, d->p->profiles[z_index][M_index][prof_index]+1, temp);
             // dht_ws is const under gsl_dht_apply, so this is thread safe
             SAFEGSL_NORETURN(gsl_dht_apply(d->p->dht_ws, temp,
-                                           d->p->conj_profiles[z_index][M_index]+1));
+                                           d->p->conj_profiles[z_index][M_index][prof_index]+1));
             CONTINUE_IF_ERR
-            d->p->conj_profiles[z_index][M_index][0]
-                = 1.0 / d->p->profiles[z_index][M_index][0];
+            d->p->conj_profiles[z_index][M_index][prof_index][0]
+                = 1.0 / d->p->profiles[z_index][M_index][prof_index][0];
+        }
         }
         CONTINUE_IF_ERR
         free(temp);
@@ -1356,7 +1479,7 @@ create_filtered_profiles(hmpdf_obj *d)
 
     HMPDFPRINT(2, "\tcreate_filtered_profiles\n");
 
-    SAFEALLOC(d->p->filtered_profiles, malloc(d->n->Nz * sizeof(double **)));
+    SAFEALLOC(d->p->filtered_profiles, malloc(d->n->Nz * sizeof(double ***)));
     SETARRNULL(d->p->filtered_profiles, d->n->Nz);
 
     #ifdef _OPENMP
@@ -1366,7 +1489,7 @@ create_filtered_profiles(hmpdf_obj *d)
     {
         CONTINUE_IF_ERR
         SAFEALLOC_NORETURN(d->p->filtered_profiles[z_index],
-                           malloc(d->n->NM * sizeof(double *)));
+                           malloc(d->n->NM * sizeof(double **)));
         CONTINUE_IF_ERR
         SETARRNULL(d->p->filtered_profiles[z_index], d->n->NM);
         double *ell;
@@ -1375,43 +1498,53 @@ create_filtered_profiles(hmpdf_obj *d)
         double *temp;
         SAFEALLOC_NORETURN(temp, malloc(d->p->Ntheta * sizeof(double))); // buffer
         CONTINUE_IF_ERR
+        
         for (int M_index=0; M_index<d->n->NM; M_index++)
         {
             CONTINUE_IF_ERR
-            SAFEALLOC_NORETURN(d->p->filtered_profiles[z_index][M_index],
+            SAFEALLOC_NORETURN(d->p->filtered_profiles[z_index][M_index], malloc(d->p->xc_sample_Nxc * sizeof(double *)));
+            //CONTINUE_IF_ERR
+            //SETARRNULL(d->p->filtered_profiles[z_index][M_index], d->p->xc_sample_Nxc);
+ 
+            for (int prof_index=0; prof_index<d->p->xc_sample_Nxc; prof_index++){
+            
+                CONTINUE_IF_ERR
+                SAFEALLOC_NORETURN(d->p->filtered_profiles[z_index][M_index][prof_index],
                                malloc((d->p->Ntheta+2) * sizeof(double)));
-            CONTINUE_IF_ERR
-            // set the outer radius
-            d->p->filtered_profiles[z_index][M_index][0]
-                = d->p->profiles[z_index][M_index][0];
+                CONTINUE_IF_ERR
+             
+                // set the outer radius
+                d->p->filtered_profiles[z_index][M_index][prof_index][0]
+                    = d->p->profiles[z_index][M_index][prof_index][0];
 
             for (int ii=0; ii<d->p->Ntheta; ii++)
             {
                 ell[ii] = d->p->reci_tgrid[ii]
-                          * d->p->conj_profiles[z_index][M_index][0];
+                          * d->p->conj_profiles[z_index][M_index][prof_index][0];
             }
 
             // multiply with the window functions
             SAFEHMPDF_NORETURN(apply_filters(d, d->p->Ntheta, ell,
-                                             d->p->conj_profiles[z_index][M_index]+1,
+                                             d->p->conj_profiles[z_index][M_index][prof_index]+1,
                                              temp, 1, filter_pdf, &z_index));
             CONTINUE_IF_ERR
             // transform back to real space
             SAFEGSL_NORETURN(gsl_dht_apply(d->p->dht_ws, temp,
-                                           d->p->filtered_profiles[z_index][M_index]+1));
+                                           d->p->filtered_profiles[z_index][M_index][prof_index]+1));
             CONTINUE_IF_ERR
             // reverse the profile
-            reverse(d->p->Ntheta, d->p->filtered_profiles[z_index][M_index]+1,
-                                  d->p->filtered_profiles[z_index][M_index]+1);
+            reverse(d->p->Ntheta, d->p->filtered_profiles[z_index][M_index][prof_index]+1,
+                                  d->p->filtered_profiles[z_index][M_index][prof_index]+1);
             // normalize properly
             for (int ii=0; ii<d->p->Ntheta; ii++)
             {
-                d->p->filtered_profiles[z_index][M_index][ii+1]
+                d->p->filtered_profiles[z_index][M_index][prof_index][ii+1]
                     *= gsl_pow_2(d->p->reci_tgrid[d->p->Ntheta-1]);
             }
 
             SAFEHMPDF_NORETURN(fix_endpoints(d->p->Ntheta, d->p->decr_tgrid,
-                                             d->p->filtered_profiles[z_index][M_index]+1));
+                                             d->p->filtered_profiles[z_index][M_index][prof_index]+1));
+        }
         }
         CONTINUE_IF_ERR
         free(temp);
@@ -1437,10 +1570,14 @@ create_segments(hmpdf_obj *d)
     SETARRNULL(d->p->segment_boundaries, d->n->Nz);
 
     // find the profiles we need to create the segments for
-    double ***pr = (d->p->created_filtered_profiles) ?
+    double ****pr = (d->p->created_filtered_profiles) ?
                    d->p->filtered_profiles
                    : d->p->profiles;
-
+    fprintf(stderr, "created_filtered_profiles=%d\n", d->p->created_filtered_profiles);
+    fprintf(stderr, "pr=%p\n", (void*)pr);
+    fprintf(stderr, "pr[0]=%p\n", (void*)pr[0]);
+    fprintf(stderr, "pr[0][0]=%p\n", (void*)pr[0][0]);
+    fprintf(stderr, "pr[0][0][0]=%p\n", (void*)pr[0][0][0]);
     #ifdef _OPENMP
     #   pragma omp parallel for num_threads(d->Ncores) schedule(dynamic)
     #endif
@@ -1467,10 +1604,10 @@ create_segments(hmpdf_obj *d)
 
             for (int ii=1; ii<d->p->Ntheta; ii++)
             {
-                int sgn_lo = GSL_SIGN(pr[z_index][M_index][ii+1]
-                                      - pr[z_index][M_index][ii]);
-                int sgn_hi = GSL_SIGN(pr[z_index][M_index][ii+2]
-                                      - pr[z_index][M_index][ii+1]);
+                int sgn_lo = GSL_SIGN(pr[z_index][M_index][0][ii+1]
+                                      - pr[z_index][M_index][0][ii]);
+                int sgn_hi = GSL_SIGN(pr[z_index][M_index][0][ii+2]
+                                      - pr[z_index][M_index][0][ii+1]);
                 if (sgn_lo != sgn_hi) // change in gradient
                 {
                     ++(d->p->segment_boundaries[z_index][M_index][0]);
@@ -1499,8 +1636,8 @@ create_segments(hmpdf_obj *d)
             // get sign for last segment correct
             d->p->segment_boundaries[z_index][M_index]
                 [d->p->segment_boundaries[z_index][M_index][0]]
-                *= GSL_SIGN(pr[z_index][M_index][d->p->Ntheta + 1]
-                            - pr[z_index][M_index][d->p->Ntheta]);
+                *= GSL_SIGN(pr[z_index][M_index][0][d->p->Ntheta + 1]
+                            - pr[z_index][M_index][0][d->p->Ntheta]);
         }
     }
 
@@ -1510,7 +1647,7 @@ create_segments(hmpdf_obj *d)
 }//}}}
 
 int
-s_of_t(hmpdf_obj *d, int z_index, int M_index, long Nt, double *t, double *s)
+s_of_t(hmpdf_obj *d, int z_index, int M_index, int prof_index, long Nt, double *t, double *s)
 // returns signal(t) at z_index, M_index
 // t is in the rescaled units (by outer radius)
 // NOTE : this function is currently only used in the maps,
@@ -1520,7 +1657,7 @@ s_of_t(hmpdf_obj *d, int z_index, int M_index, long Nt, double *t, double *s)
 
     double *temp;
     SAFEALLOC(temp, malloc((d->p->Ntheta+1) * sizeof(double)));
-    reverse(d->p->Ntheta+1, d->p->profiles[z_index][M_index]+1, temp);
+    reverse(d->p->Ntheta+1, d->p->profiles[z_index][M_index][prof_index]+1, temp);
     interp1d *interp;
     SAFEHMPDF(new_interp1d(d->p->Ntheta+1, d->p->incr_tgrid, temp, temp[0], 0.0,
                            PRINTERP_TYPE, d->p->incr_tgrid_accel[THIS_THREAD], &interp));
@@ -1544,13 +1681,13 @@ s_of_ell(hmpdf_obj *d, int z_index, int M_index, int Nell, double *ell, double *
 
     interp1d *interp;
     SAFEHMPDF(new_interp1d(d->p->Ntheta, d->p->reci_tgrid,
-                           d->p->conj_profiles[z_index][M_index]+1,
-                           d->p->conj_profiles[z_index][M_index][1]/*low l*/, 0.0/*high l*/,
+                           d->p->conj_profiles[z_index][M_index][0]+1,
+                           d->p->conj_profiles[z_index][M_index][0][1]/*low l*/, 0.0/*high l*/,
                            SELL_INTERP_TYPE, d->p->reci_tgrid_accel, &interp));
-    double hankel_norm = 2.0 * M_PI * gsl_pow_2(d->p->profiles[z_index][M_index][0]);
+    double hankel_norm = 2.0 * M_PI * gsl_pow_2(d->p->profiles[z_index][M_index][0][0]);
     for (int ii=0; ii<Nell; ii++)
     {
-        double l = ell[ii] / d->p->conj_profiles[z_index][M_index][0];
+        double l = ell[ii] / d->p->conj_profiles[z_index][M_index][0][0];
         SAFEHMPDF(interp1d_eval(interp, l, s+ii));
         s[ii] *= hankel_norm;
     }
@@ -1657,7 +1794,7 @@ inv_profile(hmpdf_obj *d, int z_index, int M_index, int segment,
     // choose the correct profile
     double *pr = ((d->p->created_filtered_profiles) ?
                  d->p->filtered_profiles
-                 : d->p->profiles)[z_index][M_index];
+                 : d->p->profiles)[z_index][M_index][0];
 
     // check if there is anything interesting here
     if (all_zero(len, pr+start,

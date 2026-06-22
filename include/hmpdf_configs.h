@@ -526,6 +526,9 @@ typedef enum
     hmpdf_DM_IGM,
     hmpdf_out_dir_path,
     hmpdf_f_scatter,
+    hmpdf_xc_f_sigma,
+    hmpdf_xc_sample_Nxc,
+    hmpdf_xc_sample_dxc, 
     hmpdf_end_configs, /*!< required last argument in hmpdf_init_fct(), the convenience macro
                         *   hmpdf_init() takes care of that.
                         */

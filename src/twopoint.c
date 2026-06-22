@@ -295,7 +295,7 @@ tp_segmentsum(hmpdf_obj *d, int z_index, int M_index, double phi, twopoint_works
                 // t1 is monotonically decreasing with ii
 
                 // check if no triangle can be formed anymore, since t1 only decreases
-                if (phi >= t1 + d->p->profiles[z_index][M_index][0]) { break; }
+                if (phi >= t1 + d->p->profiles[z_index][M_index][0][0]) { break; }
 
                 for (long signalindex2 = d->tp->t[z_index][M_index][segment2].start, jj=0;
                      (jj < d->tp->t[z_index][M_index][segment2].len)

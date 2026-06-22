@@ -276,13 +276,13 @@ reset_map_ws(hmpdf_obj *d, map_ws *ws)
 }//}}}
 
 static int
-fill_buf(hmpdf_obj *d, int z_index, int M_index, map_ws *ws)
+fill_buf(hmpdf_obj *d, int z_index, int M_index, int prof_index, map_ws *ws)
 // creates a map of the given object in the buffer
 {//{{{
     STARTFCT
 
     // theta_out in units of the pixel spacing
-    double tout = d->p->profiles[z_index][M_index][0]
+    double tout = d->p->profiles[z_index][M_index][prof_index][0]
                   / d->f->pixelside;
 
     // compute how large this specific map needs to be
@@ -324,7 +324,7 @@ fill_buf(hmpdf_obj *d, int z_index, int M_index, map_ws *ws)
         }
 
         // evaluate the profile interpolator
-        SAFEHMPDF(s_of_t(d, z_index, M_index, posidx, ws->pos, ws->buf+Npix_filled));
+        SAFEHMPDF(s_of_t(d, z_index, M_index,prof_index, posidx, ws->pos, ws->buf+Npix_filled));
 
         posidx = 0;
         // perform the average
@@ -456,7 +456,7 @@ draw_N_halos(hmpdf_obj *d, int z_index, int M_index, map_ws *ws, unsigned *N)
 }//}}}
 
 static int
-do_this_bin(hmpdf_obj *d, int z_index, int M_index, map_ws *ws)
+do_this_bin(hmpdf_obj *d, int z_index, int M_index,map_ws *ws)
 // draws random integer from correct distribution
 // if ==0, return
 // else, fill_buf and then integer x add_buf
@@ -464,6 +464,8 @@ do_this_bin(hmpdf_obj *d, int z_index, int M_index, map_ws *ws)
     STARTFCT
 
     unsigned N;
+    unsigned N_prof;
+    
     SAFEHMPDF(draw_N_halos(d, z_index, M_index, ws, &N));
 
     if (N == 0)
@@ -472,16 +474,25 @@ do_this_bin(hmpdf_obj *d, int z_index, int M_index, map_ws *ws)
     }
     else
     {
-        SAFEHMPDF(fill_buf(d, z_index, M_index, ws));
+        for (int prof_index=0; prof_index<d->p->xc_sample_Nxc; prof_index++){
 
+        SAFEHMPDF(fill_buf(d, z_index, M_index, prof_index, ws));
+        
         HMPDFCHECK(ws->bufside >= d->m->Nside,
                    "attempting to add a halo that is larger than the map. "
                    "You should make the map larger.");
-
-        for (unsigned ii=0; ii<N; ii++)
+        
+        //compute N based on gaussian scatter
+        N_prof=ceil(N*d->p->xc_prob[prof_index]);
+        //printf("total N %u\n", N);
+        //printf("prob %.3f\n", d->p->xc_prob[prof_index]);
+        //printf("N_prof %u\n", N_prof);
+        //
+        for (unsigned ii=0; ii<N_prof; ii++)
         {
             SAFEHMPDF(add_buf(d, ws));
         }
+    }
     }
 
     ENDFCT
@@ -913,9 +924,12 @@ create_sidelengths(hmpdf_obj *d)
     for (int z_index=0; z_index<d->n->Nz; z_index++)
     {
         for (int M_index=0; M_index<d->n->NM; M_index++)
-        {
+        {   
+            for (int prof_index=0; prof_index<d->p->xc_sample_Nxc; prof_index++)
+            {
             max_t_out = GSL_MAX(max_t_out,
-                                d->p->profiles[z_index][M_index][0]);
+                                d->p->profiles[z_index][M_index][prof_index][0]);
+            }
         }
     }
 

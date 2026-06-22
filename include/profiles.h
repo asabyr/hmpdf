@@ -32,13 +32,21 @@ typedef struct//{{{
     gsl_interp_accel **incr_tgrid_accel;
     gsl_interp_accel *reci_tgrid_accel;
 
-    double ***profiles; // each profile has as zero entry theta out and then the profile
-    double **M_e_halos; //total electron mass in halos
+    double ****profiles; // each profile has as zero entry theta out and then the profile
+    double xc_f_sigma;
+    double xc_sigma;
+    double xc_mean;
+    double *xc_prob;
+    double xc_prob_tot;
+    int xc_sample_Nxc;
+    double xc_sample_dxc;
+    double *xc_sample; 
+    double ***M_e_halos; //total electron mass in halos
     int created_conj_profiles;
-    double ***conj_profiles; // each profile has as zero entry the rescaling such that reci_thetagrid -> ell
+    double ****conj_profiles; // each profile has as zero entry the rescaling such that reci_thetagrid -> ell
 
     int created_filtered_profiles;
-    double ***filtered_profiles;
+    double ****filtered_profiles;
 
     int created_segments;
     int ***segment_boundaries;
@@ -93,7 +101,7 @@ int create_conj_profiles(hmpdf_obj *d);
 int create_filtered_profiles(hmpdf_obj *d);
 int create_segments(hmpdf_obj *d);
 
-int s_of_t(hmpdf_obj *d, int z_index, int M_index, long Nt, double *t, double *s);
+int s_of_t(hmpdf_obj *d, int z_index, int M_index, int prof_index, long Nt, double *t, double *s);
 int s_of_ell(hmpdf_obj *d, int z_index, int M_index, int Nell, double *ell, double *s);
 int inv_profile(hmpdf_obj *d, int z_index, int M_index, int segment,
                 inv_profile_e mode, batch_t *b);
