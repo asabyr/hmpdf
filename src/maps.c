@@ -276,7 +276,7 @@ reset_map_ws(hmpdf_obj *d, map_ws *ws)
 }//}}}
 
 static int
-fill_buf(hmpdf_obj *d, int z_index, int M_index, int prof_index, map_ws *ws)
+fill_buf(hmpdf_obj *d, int z_index, int M_index, int prof_index, map_ws *ws, double amp_scale)
 // creates a map of the given object in the buffer
 {//{{{
     STARTFCT
@@ -324,7 +324,7 @@ fill_buf(hmpdf_obj *d, int z_index, int M_index, int prof_index, map_ws *ws)
         }
 
         // evaluate the profile interpolator
-        SAFEHMPDF(s_of_t(d, z_index, M_index,prof_index, posidx, ws->pos, ws->buf+Npix_filled));
+        SAFEHMPDF(s_of_t(d, z_index, M_index,prof_index, posidx, ws->pos, ws->buf+Npix_filled, amp_scale));
 
         posidx = 0;
         // perform the average
@@ -465,7 +465,8 @@ do_this_bin(hmpdf_obj *d, int z_index, int M_index,map_ws *ws)
 
     unsigned N;
     unsigned N_prof;
-    
+    double amp_scale;
+
     SAFEHMPDF(draw_N_halos(d, z_index, M_index, ws, &N));
 
     if (N == 0)
@@ -473,19 +474,26 @@ do_this_bin(hmpdf_obj *d, int z_index, int M_index,map_ws *ws)
         return 0;
     }
     else
-    {
+    {   
+        //printf("before prof loop");
+        //printf("Nxc %d\n",d->p->xc_sample_Nxc);
         for (int prof_index=0; prof_index<d->p->xc_sample_Nxc; prof_index++){
-
-        SAFEHMPDF(fill_buf(d, z_index, M_index, prof_index, ws));
+        //printf("prof_index %d\n", prof_index);
+        for (int amp_index=0; amp_index<d->p->amp_sample_Namp; amp_index++){
+            
+        amp_scale=1.0+d->p->amp_sample[amp_index]*d->p->amp_f_sigma;
+        //printf("amp_scale %18f\n",amp_scale); 
+    
+        SAFEHMPDF(fill_buf(d, z_index, M_index, prof_index, ws, amp_scale));
         
         HMPDFCHECK(ws->bufside >= d->m->Nside,
                    "attempting to add a halo that is larger than the map. "
                    "You should make the map larger.");
         
         //compute N based on gaussian scatter
-        N_prof=ceil(N*d->p->xc_prob[prof_index]);
+        N_prof=ceil(N*d->p->xc_prob[prof_index]*d->p->amp_prob[amp_index]);
         //printf("total N %u\n", N);
-        //printf("prob %.3f\n", d->p->xc_prob[prof_index]);
+        //printf("prob %.3f\n", d->p->xc_prob[prof_index]*d->p->amp_prob[amp_index]);
         //printf("N_prof %u\n", N_prof);
         //
         for (unsigned ii=0; ii<N_prof; ii++)
@@ -494,7 +502,7 @@ do_this_bin(hmpdf_obj *d, int z_index, int M_index,map_ws *ws)
         }
     }
     }
-
+    }
     ENDFCT
 }//}}}
 

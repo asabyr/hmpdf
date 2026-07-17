@@ -56,7 +56,9 @@ null_profiles(hmpdf_obj *d)
     d->p->xc_prob_tot = 0.0; 
     d->p->xc_sigma = 0.0; 
     d->p->xc_mean = 0.0; 
-
+    d->p->amp_sample= NULL;
+    d->p->amp_prob = NULL;
+    d->p->amp_prob_tot=0.0;
     ENDFCT
 }//}}}
 
@@ -1310,7 +1312,53 @@ create_profiles(hmpdf_obj *d)
     }
     
     printf("prob tot %.3f\n",d->p->xc_prob_tot);
+   
+    //sampling just amplitude
 
+    if (d->p->amp_sample_Namp>0){
+    
+    SAFEALLOC_NORETURN(d->p->amp_prob, malloc(d->p->amp_sample_Namp*sizeof(double)));
+    SAFEALLOC_NORETURN(d->p->amp_sample, malloc(d->p->amp_sample_Namp*sizeof(double)));
+    d->p->amp_sample[0]=0.0;//0 sigma from mean 
+    
+    if (d->p->amp_sample_Namp<=1){
+    //no sampling of the amplitude 
+    d->p->amp_prob[0]=1.0;
+    d->p->amp_prob_tot=1.0;
+
+    }else{
+    //fill in for mean
+    d->p->amp_prob[0]=gsl_cdf_ugaussian_P(0.0+d->p->amp_sample_damp/2.0)-gsl_cdf_ugaussian_P(0.0-d->p->amp_sample_damp/2.0);
+    d->p->amp_prob_tot=d->p->amp_prob[0];
+    }
+    
+    int half=(d->p->amp_sample_Namp-1)/2;
+    double upper;
+    double lower;
+
+    for (int i=1; i<d->p->amp_sample_Namp; i++){
+        
+        if (i <= half){
+        d->p->amp_sample[i]=(-half-1+i)*d->p->amp_sample_damp;
+        }else{
+        d->p->amp_sample[i]=(i-half)*d->p->amp_sample_damp;
+        }
+        
+        upper=d->p->amp_sample[i]+d->p->amp_sample_damp/2.0;
+        lower=d->p->amp_sample[i]-d->p->amp_sample_damp/2.0;
+        printf("upper %.3f\n",upper);
+        printf("lower %.3f\n", lower);
+        d->p->amp_prob[i]=gsl_cdf_ugaussian_P(upper)-gsl_cdf_ugaussian_P(lower);
+        printf("prob %.3f\n", d->p->amp_prob[i]);
+        d->p->amp_prob_tot+=d->p->amp_prob[i];
+        
+        }
+
+    printf("prob tot %.3f\n",d->p->amp_prob_tot);
+    
+    }
+    
+    
    // for (int j=0; j<d->p->xc_sample_Nxc; j++){
     
    //     d->p->xc_prob[j]/=d->p->xc_prob_tot;
@@ -1647,7 +1695,7 @@ create_segments(hmpdf_obj *d)
 }//}}}
 
 int
-s_of_t(hmpdf_obj *d, int z_index, int M_index, int prof_index, long Nt, double *t, double *s)
+s_of_t(hmpdf_obj *d, int z_index, int M_index, int prof_index, long Nt, double *t, double *s, double amp_scale)
 // returns signal(t) at z_index, M_index
 // t is in the rescaled units (by outer radius)
 // NOTE : this function is currently only used in the maps,
@@ -1658,6 +1706,10 @@ s_of_t(hmpdf_obj *d, int z_index, int M_index, int prof_index, long Nt, double *
     double *temp;
     SAFEALLOC(temp, malloc((d->p->Ntheta+1) * sizeof(double)));
     reverse(d->p->Ntheta+1, d->p->profiles[z_index][M_index][prof_index]+1, temp);
+    
+    for (size_t i = 0; i < d->p->Ntheta; i++)
+    {temp[i] *= amp_scale;}
+    
     interp1d *interp;
     SAFEHMPDF(new_interp1d(d->p->Ntheta+1, d->p->incr_tgrid, temp, temp[0], 0.0,
                            PRINTERP_TYPE, d->p->incr_tgrid_accel[THIS_THREAD], &interp));

@@ -529,6 +529,9 @@ typedef enum
     hmpdf_xc_f_sigma,
     hmpdf_xc_sample_Nxc,
     hmpdf_xc_sample_dxc, 
+    hmpdf_amp_f_sigma,
+    hmpdf_amp_sample_Namp,
+    hmpdf_amp_sample_damp,
     hmpdf_end_configs, /*!< required last argument in hmpdf_init_fct(), the convenience macro
                         *   hmpdf_init() takes care of that.
                         */

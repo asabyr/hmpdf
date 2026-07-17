@@ -94,7 +94,7 @@ struct DEFAULTS def = { .Ncores={1,1,1000}, .verbosity=0, .warn_is_err=1,
                         .ne_prof={hmpdf_ne_B16,0,hmpdf_ne_TNG},
                         .noise_pwr=NULL, .noise_pwr_params=NULL,
                         .fsky={-1.0,0.0,1.0}, .pxlgrid={3,1,20}, .mappoisson=1, .mapseed=INT_MAX, .y_Hyd={1.0,0.1,1.0},.y_Hel={1.0,0.1,1.0}, .hmf_swap="none", 
-                        .dm_igm="none", .zgrid_f="none", .zweights_f="none", .Mgrid_f="none", .Mweights_f="none", .adjust_Rout=0, .out_dir_p="../data/", .HMF_func="T10", .HMF_mdef={hmpdf_mdef_m,0,hmpdf_mdef_m}, .interp_T08=0, .f_scatter=1.0, .xc_f_sigma=0.0, .xc_sample_Nxc=1, .xc_sample_dxc=1.0};
+                        .dm_igm="none", .zgrid_f="none", .zweights_f="none", .Mgrid_f="none", .Mweights_f="none", .adjust_Rout=0, .out_dir_p="../data/", .HMF_func="T10", .HMF_mdef={hmpdf_mdef_m,0,hmpdf_mdef_m}, .interp_T08=0, .f_scatter=1.0, .xc_f_sigma=0.0, .xc_sample_Nxc=1, .xc_sample_dxc=1.0, .amp_f_sigma=0.0, .amp_sample_Namp=1, .amp_sample_damp=1.0};
 
 // The following is only needed for more reliable interaction
 //     with the python wrapper

@@ -353,6 +353,12 @@ init_params(hmpdf_obj *d, param *p)
             d->p->xc_sample_Nxc, int_type, def.xc_sample_Nxc);
     INIT_P(hmpdf_xc_sample_dxc,
             d->p->xc_sample_dxc, dbl_type, def.xc_sample_dxc);
+    INIT_P(hmpdf_amp_f_sigma,
+           d->p->amp_f_sigma, dbl_type, def.amp_f_sigma);
+    INIT_P(hmpdf_amp_sample_Namp,
+            d->p->amp_sample_Namp, int_type, def.amp_sample_Namp);
+    INIT_P(hmpdf_amp_sample_damp,
+            d->p->amp_sample_damp, dbl_type, def.amp_sample_damp);
     HMPDFCHECK(ctr != hmpdf_end_configs, "Not all params filled, ctr = %d.", ctr);
 
     ENDFCT

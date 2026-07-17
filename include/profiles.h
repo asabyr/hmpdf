@@ -41,6 +41,14 @@ typedef struct//{{{
     int xc_sample_Nxc;
     double xc_sample_dxc;
     double *xc_sample; 
+    
+    double amp_f_sigma;
+    double *amp_prob;
+    double amp_prob_tot;
+    int amp_sample_Namp;
+    double amp_sample_damp;
+    double *amp_sample;
+    
     double ***M_e_halos; //total electron mass in halos
     int created_conj_profiles;
     double ****conj_profiles; // each profile has as zero entry the rescaling such that reci_thetagrid -> ell
@@ -101,7 +109,7 @@ int create_conj_profiles(hmpdf_obj *d);
 int create_filtered_profiles(hmpdf_obj *d);
 int create_segments(hmpdf_obj *d);
 
-int s_of_t(hmpdf_obj *d, int z_index, int M_index, int prof_index, long Nt, double *t, double *s);
+int s_of_t(hmpdf_obj *d, int z_index, int M_index, int prof_index, long Nt, double *t, double *s, double amp_scale);
 int s_of_ell(hmpdf_obj *d, int z_index, int M_index, int Nell, double *ell, double *s);
 int inv_profile(hmpdf_obj *d, int z_index, int M_index, int segment,
                 inv_profile_e mode, batch_t *b);
