@@ -183,6 +183,11 @@ typedef enum
                         //Type: double. Default: 8*10^14
     hmpdf_max_z_fix, //Below this redshift and above M200c hmpdf_min_mass_fix mass, the profiles are fixed
                     //Type: double. Default: 0.5
+    hmpdf_fix_cosmo_prof, 
+    hmpdf_fix_Omega_c,
+    hmpdf_fix_angular_diameter_file,
+    hmpdf_fix_rhoc_file,
+    hmpdf_fix_rhom_file,
     hmpdf_N_signal, /*!< number of points on which the one-point PDF is sampled internally
                      *   \par
                      *   Type: long. Default: 1024.

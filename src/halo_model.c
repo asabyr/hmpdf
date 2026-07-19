@@ -69,8 +69,13 @@ static int
 DeltaVir_BryanNorman98(hmpdf_obj *d, int z_index, double *out)
 {//{{{
     STARTFCT
-
-    double x = d->c->Om[z_index] - 1.0;
+            
+    double x;
+    if (d->p->fix_cosmo_prof>0){
+    //x = ((d->p->fix_Omega_c+d->c->Ob_0)*pow(1.0+d->n->zgrid[z_index],3.0)*d->c->rho_c_0/d->c->rho_c_fid_cosmo[z_index])-1.0;
+    x = d->c->rho_m_fid_cosmo[z_index]/d->c->rho_c_fid_cosmo[z_index]-1.0;
+    }else{
+    x = d->c->Om[z_index] - 1.0;}
     *out = 18.0*M_PI*M_PI + 82.0*x - 39.0*x*x;
 
     ENDFCT
@@ -82,6 +87,27 @@ density_threshold(hmpdf_obj *d, int z_index, hmpdf_mdef_e mdef, double *out)
     STARTFCT
 
     double dvir = 0.0; // to avoid maybe-uninitialized
+    if (d->p->fix_cosmo_prof>0){
+    printf("fixing cosmology \n"); 
+    switch (mdef)
+    {
+        case hmpdf_mdef_c : *out = 200.0 * d->c->rho_c_fid_cosmo[z_index];
+                            printf("entering M200c\n");
+                            break;
+        case hmpdf_mdef_v : SAFEHMPDF(DeltaVir_BryanNorman98(d, z_index, &dvir));
+                            *out = dvir * d->c->rho_c_fid_cosmo[z_index];
+                            printf("entering virial");
+                            break;
+        case hmpdf_mdef_m : *out = 200.0 * d->c->rho_m_fid_cosmo[z_index];
+                            printf("entering M200m");
+                            break;
+        default           : *out = 0.0; // to avoid maybe-uninitialized
+                            HMPDFERR("Unknown mass definition.");
+    }
+    
+    }
+    
+    else{
     switch (mdef)
     {
         case hmpdf_mdef_c : *out = 200.0 * d->c->rho_c[z_index];
@@ -94,7 +120,7 @@ density_threshold(hmpdf_obj *d, int z_index, hmpdf_mdef_e mdef, double *out)
         default           : *out = 0.0; // to avoid maybe-uninitialized
                             HMPDFERR("Unknown mass definition.");
     }
-
+    }
     ENDFCT
 }//}}}
 

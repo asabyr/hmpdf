@@ -315,7 +315,16 @@ init_params(hmpdf_obj *d, param *p)
             d->p->min_mass_fix, dbl_type, def.min_mass_fix_prof);
     INIT_P(hmpdf_max_z_fix,
             d->p->max_z_fix, dbl_type, def.max_z_fix_prof);
-    
+    INIT_P(hmpdf_fix_cosmo_prof, 
+            d->p->fix_cosmo_prof, int_type, def.fix_cosmo_prof);
+    INIT_P(hmpdf_fix_Omega_c,
+            d->p->fix_Omega_c, dbl_type, def.fix_Omega_c);
+    INIT_P(hmpdf_fix_angular_diameter_file, 
+            d->p->fix_angular_diameter_file, str_type, def.fix_angular_diameter_file);
+    INIT_P(hmpdf_fix_rhoc_file,
+            d->p->fix_rhoc_file, str_type, def.fix_rhoc_file);
+    INIT_P(hmpdf_fix_rhom_file, 
+            d->p->fix_rhom_file, str_type, def.fix_rhom_file);
     HMPDFCHECK(ctr != hmpdf_end_configs, "Not all params filled, ctr = %d.", ctr);
 
     ENDFCT

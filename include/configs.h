@@ -98,6 +98,12 @@
 #define DNDZ_INTEGR_KEY 6
 #define DNDZ_INTEGR_EPSABS 0.0 // in units of the normalization
 #define DNDZ_INTEGR_EPSREL 1e-6
+
+#define CHI_INTEGR_LIMIT 1000
+#define CHI_INTEGR_KEY 6
+#define CHI_INTEGR_EPSABS 0.0
+#define CHI_INTEGR_EPSREL 1e-6
+
 //}}}
 
 struct DEFAULTS {int Ncores[3]; int verbosity; int warn_is_err;
@@ -125,7 +131,8 @@ struct DEFAULTS {int Ncores[3]; int verbosity; int warn_is_err;
                  hmpdf_integr_mode_e Mintegr_type[3]; double Mintegr_alpha; double Mintegr_beta;
                  double *Duffy08_p; double *Tinker10_p; double *Battaglia12_p;
                  hmpdf_noise_pwr_f noise_pwr; void *noise_pwr_params;
-                 double fsky[3]; int pxlgrid[3]; int mappoisson; int mapseed; int mass_z_fix_prof; double min_mass_fix_prof; double max_z_fix_prof};
+                 double fsky[3]; int pxlgrid[3]; int mappoisson; int mapseed; int mass_z_fix_prof; double min_mass_fix_prof; double max_z_fix_prof; 
+                int fix_cosmo_prof; double fix_Omega_c; char *fix_angular_diameter_file; char *fix_rhoc_file; char *fix_rhom_file};
 
 extern
 struct DEFAULTS def;

@@ -116,6 +116,36 @@ dndz_integr_f(double z, void *params)
     return out;
 }
 
+typedef struct
+{
+    double fix_Omega_c;
+    double Ob_0;
+    double Omega_rad;
+    double Omega_l;
+    int status;
+} chi_integr_params;
+
+static inline double
+chi_kernel(double z,chi_integr_params *p, double *out)  
+{
+    STARTFCT
+    
+    *out=pow((p->fix_Omega_c+p->Ob_0)*pow(1+z, 3.0)+p->Omega_l+p->Omega_rad*pow(1+z,4.0), 1.0/2.0);
+    
+    ENDFCT
+
+}
+
+static double 
+chi_integr_f(double z, void *params)
+{
+    chi_integr_params *p = (chi_integr_params *)params;
+    
+    double out =0.0;
+    p->status = chi_kernel(z,p,&out);
+    return out;
+}
+
 static int
 fill_background(hmpdf_obj *d)
 {//{{{
@@ -135,9 +165,9 @@ fill_background(hmpdf_obj *d)
     d->c->rho_c_0 = 3.0 * gsl_pow_2(SPEEDOFLIGHT) / 8.0 / M_PI / GNEWTON
                     * gsl_pow_2(ba->H0);
     d->c->Om_0 = ba->Omega0_m;
+    printf("Omega_m_0 %.18f\n", d->c->Om_0);
     d->c->rho_m_0 = d->c->Om_0 * d->c->rho_c_0;
     d->c->Ob_0 = ba->Omega0_b;
-
     // get background
     for (int z_index=0; z_index<d->n->Nz; z_index++)
     {
@@ -157,8 +187,86 @@ fill_background(hmpdf_obj *d)
         d->c->rho_c[z_index] = 3.0 * gsl_pow_2(SPEEDOFLIGHT) / 8.0 / M_PI / GNEWTON
                                * gsl_pow_2(d->c->hubble[z_index]);
         d->c->rho_m[z_index] = d->c->Om[z_index] * d->c->rho_c[z_index];
-    }
+        printf("rho_c %.18e\n", d->c->rho_c[z_index]);
+        printf("angular diameter %.18e\n", d->c->angular_diameter[z_index]);
+        printf("rho_m%.18e\n", d->c->rho_m[z_index]);
 
+        }
+
+    ///////////////////
+
+
+    if (d->p->fix_cosmo_prof>0){
+    
+    // fix cosmology for profile shapes
+
+    if (strcmp(d->p->fix_angular_diameter_file, "none")!=0 && strcmp(d->p->fix_rhoc_file, "none")){
+        //read from files
+        SAFEALLOC(d->c->rho_c_fid_cosmo, malloc(d->n->Nz * sizeof(double)));
+        SAFEALLOC(d->c->angular_diameter_fid_cosmo, malloc(d->n->Nz * sizeof(double)));
+        SAFEALLOC(d->c->rho_m_fid_cosmo, malloc(d->n->Nz * sizeof(double)));
+
+        FILE *fp_DA=fopen(d->p->fix_angular_diameter_file, "rb");
+        fread(d->c->angular_diameter_fid_cosmo, sizeof(double),d->n->Nz,fp_DA);
+        FILE *fp_rhoc=fopen(d->p->fix_rhoc_file, "rb");
+        fread(d->c->rho_c_fid_cosmo, sizeof(double), d->n->Nz,fp_rhoc); 
+        FILE *fp_rhom=fopen(d->p->fix_rhom_file, "rb");
+        fread(d->c->rho_m_fid_cosmo, sizeof(double), d->n->Nz,fp_rhom);
+
+        for (int z_index=0; z_index<d->n->Nz; z_index++){
+        printf("rho_c %.18e\n",d->c->rho_c_fid_cosmo[z_index]);
+        printf("dA %.18e\n",d->c->angular_diameter_fid_cosmo[z_index]);
+        printf("rho_m%.18e\n",d->c->rho_m_fid_cosmo[z_index]);
+        }
+
+        } 
+    else {
+        SAFEALLOC(d->c->rho_c_fid_cosmo, malloc(d->n->Nz * sizeof(double)));
+        SAFEALLOC(d->c->angular_diameter_fid_cosmo, malloc(d->n->Nz * sizeof(double)));
+        SAFEALLOC(d->c->rho_m_fid_cosmo, malloc(d->n->Nz * sizeof(double)));
+ 
+        double Omega_rad=pvecback[ba->index_bg_Omega_r]; //at z=0 these are the same
+        double Omega_l=1.0-(d->p->fix_Omega_c+d->c->Ob_0)-Omega_rad;
+        double hubble_fid_cosmo;
+        
+        for (int z_index=0; z_index<d->n->Nz; z_index++){
+            
+            hubble_fid_cosmo = d->c->h*100.0*pow((d->p->fix_Omega_c+d->c->Ob_0)*pow(1+d->n->zgrid[z_index],3.0)+Omega_l+Omega_rad*pow(1+d->n->zgrid[z_index],4.0),1.0/2.0)/(SPEEDOFLIGHT*100.);
+            d->c->rho_c_fid_cosmo[z_index] = 3.0 * gsl_pow_2(SPEEDOFLIGHT) / 8.0 / M_PI / GNEWTON * gsl_pow_2(hubble_fid_cosmo);
+            d->c->rho_m_fid_cosmo[z_index] = d->c->rho_c_fid_cosmo[z_index]*d->c->Om_0*pow(1+d->n->zgrid[z_index],3.0);
+ 
+            //compute c\int_0^z dz/H(z) and divide by (1+z) for comoving
+            gsl_integration_workspace *ws;
+            SAFEALLOC(ws, gsl_integration_workspace_alloc(CHI_INTEGR_LIMIT));
+            gsl_function F;
+            double err;
+            
+            chi_integr_params p = {.fix_Omega_c=d->p->fix_Omega_c, .Ob_0=d->c->Ob_0, .Omega_l=Omega_l, .Omega_rad=Omega_rad};
+            F.function = chi_integr_f;
+            F.params = &p;
+            
+            double out;
+            SAFEGSL(gsl_integration_qag(&F, 0.0, d->n->zgrid[z_index],
+                                            CHI_INTEGR_EPSABS, CHI_INTEGR_EPSREL,
+                                            CHI_INTEGR_LIMIT,CHI_INTEGR_KEY, ws,
+                                            &out, &err));
+
+            HMPDFCHECK(p.status, "error encountered during integration");
+            d->c->angular_diameter_fid_cosmo[z_index]=out*SPEEDOFLIGHT*100.0/(d->c->h*100.0)/(1+d->n->zgrid[z_index]);
+            double percent_error;
+            percent_error=err/out*100.0;
+            printf("percent err %.18e\n",percent_error); 
+            printf("rho_c %.18e\n",d->c->rho_c_fid_cosmo[z_index]);
+            printf("dA %.18e\n",d->c->angular_diameter_fid_cosmo[z_index]);
+            printf("rho_m%.18e\n",d->c->rho_m_fid_cosmo[z_index]);        
+        } 
+        //compute
+        
+    }
+    } 
+
+
+    ///////////////////
     if (d->p->stype == hmpdf_kappa) // need to compute critical surface density
     {
         if (d->n->dndz != NULL)
@@ -240,7 +348,31 @@ init_cosmology(hmpdf_obj *d)
 
     SAFEHMPDF(alloc_cosmo(d));
     SAFEHMPDF(fill_background(d));
-
+    
+    #ifdef SAVE_COSMO
+    double Oc_0 = d->c->Om_0-d->c->Ob_0;
+    char buffer_rhoc[512];
+    sprintf(buffer_rhoc, "/work2/07833/tg871330/stampede3/software/hmpdf/data/cosmo/rhoc_Omega_c%.5f.bin", Oc_0);
+    FILE *fp_rhoc = fopen(buffer_rhoc, "w");
+    //fwrite(d->n->zgrid, sizeof(double), d->n->Nz,fp_rhoc);
+    fwrite(d->c->rho_c, sizeof(double), d->n->Nz, fp_rhoc);
+    fclose(fp_rhoc);
+    
+    char buffer_rhom[512];
+    sprintf(buffer_rhom, "/work2/07833/tg871330/stampede3/software/hmpdf/data/cosmo/rhom_Omega_c%.5f.bin", Oc_0);
+    FILE *fp_rhom = fopen(buffer_rhom, "w");
+    //fwrite(d->n->zgrid, sizeof(double), d->n->Nz,fp_rhoc);
+    fwrite(d->c->rho_m, sizeof(double), d->n->Nz, fp_rhom);
+    fclose(fp_rhom);
+     
+    char buffer_DA[512];
+    sprintf(buffer_DA, "/work2/07833/tg871330/stampede3/software/hmpdf/data/cosmo/DA_Omega_c%.5f.bin", Oc_0);
+    FILE *fp_DA = fopen(buffer_DA, "w");
+    //fwrite(d->n->zgrid, sizeof(double), d->n->Nz, fp_DA);
+    fwrite(d->c->angular_diameter, sizeof(double), d->n->Nz, fp_DA);
+    fclose(fp_DA); 
+    #endif 
+    
     ENDFCT
 }//}}}
 

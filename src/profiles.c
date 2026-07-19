@@ -451,7 +451,8 @@ tsz_profile(hmpdf_obj *d, int z_index, int M_index,
     double xc = Battmodel_primitive(d, M200c, d->n->zgrid[z_index], 1);
     Rout /= R200c * xc;
     
-    
+    printf("M200c %.18e\n", M200c);
+    printf("R200c %.18e\n", R200c); 
     // prepare the integration
     Battmodel_params par;
     par.alpha = Battmodel_primitive(d, M200c, d->n->zgrid[z_index], 2);
@@ -464,18 +465,46 @@ tsz_profile(hmpdf_obj *d, int z_index, int M_index,
     integrand.params = &par;
     gsl_integration_workspace *ws;
     SAFEALLOC(ws, gsl_integration_workspace_alloc(BATTINTEGR_LIMIT));
-
+    double scaling; 
+    if (d->p->fix_cosmo_prof>0){
+    printf("fixing cosmology for profiles\n");
+    scaling = P0 * xc * M200c * 200.0
+                     * d->c->rho_c_fid_cosmo[z_index] * d->c->Ob_0 / (d->c->Ob_0+d->p->fix_Omega_c)
+                     * GNEWTON * SIGMATHOMSON / MELECTRON / gsl_pow_2(SPEEDOFLIGHT)
+                     / 1.932/*convert from thermal to electron pressure*/;    
+    printf("scaling %.18e\n",scaling);
+    printf("M200c %.18e\n", M200c); 
+    }else{
     // rescaling from integration units to physical Compton-y
-    double scaling = P0 * xc * M200c * 200.0
+    scaling = P0 * xc * M200c * 200.0
                      * d->c->rho_c[z_index] * d->c->Ob_0 / d->c->Om_0
                      * GNEWTON * SIGMATHOMSON / MELECTRON / gsl_pow_2(SPEEDOFLIGHT)
                      / 1.932/*convert from thermal to electron pressure*/;
-
+    printf("scaling %.18e\n",scaling);
+    printf("M200c %.18e\n", M200c);
+    }
     // loop over angles
     for (int ii=1/*start one inside, outermost value=0*/; ii<d->p->Ntheta; ii++)
     {
         double t = d->p->decr_tgrid[ii] * theta_out;
+        printf("theta_out %.18e\n", theta_out);
+        printf("t %.18e\n",t);
+        if (d->p->fix_cosmo_prof>0){
+        printf("fixing cosmology for profiles\n");
+        par.rproj = tan(t) * d->c->angular_diameter_fid_cosmo[z_index] / R200c / xc;
+        printf("d->c->angular_diameter_fid_cosmo[z_index] %.18e\n",d->c->angular_diameter_fid_cosmo[z_index]);
+        printf("R200c %.18e\n",R200c);
+         printf("xc %.18e\n",xc);
+        printf("par.rproj %.18e\n",par.rproj);
+        } else{
         par.rproj = tan(t) * d->c->angular_diameter[z_index] / R200c / xc;
+        printf("d->c->angular_diameter[z_index] %.18e\n",d->c->angular_diameter[z_index]);
+        printf("R200c %.18e\n",R200c);
+        printf("xc %.18e\n",xc);
+        printf("par.rproj %.18e\n",par.rproj);
+         
+        }
+        exit(0);
         double lout = sqrt(Rout*Rout - par.rproj*par.rproj);
         
         double err;
@@ -493,6 +522,7 @@ tsz_profile(hmpdf_obj *d, int z_index, int M_index,
     gsl_integration_workspace_free(ws);
 
     ENDFCT
+    //exit(0);
 }
 //}}}
 
@@ -512,7 +542,14 @@ profile(hmpdf_obj *d, int z_index, int M_index, double *p)
     double M, Rout, c;
     SAFEHMPDF(Mconv(d, z_index, M_index, d->p->rout_def, mass_resc, &M, &Rout, &c));
     Rout *= d->p->rout_scale;
-    double theta_out = atan(Rout/d->c->angular_diameter[z_index]);
+    
+    double theta_out;
+
+    if (d->p->fix_cosmo_prof>0){
+    theta_out = atan(Rout/d->c->angular_diameter_fid_cosmo[z_index]);
+    }else{
+    theta_out = atan(Rout/d->c->angular_diameter[z_index]);
+    }
 
     if (d->p->stype == hmpdf_kappa
         && d->bcm->Arico20_params == NULL)

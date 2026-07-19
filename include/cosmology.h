@@ -21,6 +21,11 @@ typedef struct//{{{
     double *Om;
     double Om_0;
     double Ob_0;
+    
+    double *angular_diameter_fid_cosmo;
+    double *rho_c_fid_cosmo;
+    //double *hubble_fid_cosmo;
+    double *rho_m_fid_cosmo;
 }//}}}
 cosmology_t;
 

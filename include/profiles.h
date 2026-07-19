@@ -56,6 +56,12 @@ typedef struct//{{{
     double min_mass_fix;
     double max_z_fix; 
     
+    //for fixing cosmology for profiles
+    int fix_cosmo_prof;
+    double fix_Omega_c;
+    char *fix_angular_diameter_file;
+    char *fix_rhoc_file;  
+    char *fix_rhom_file;  
 }//}}}
 profiles_t;
 
