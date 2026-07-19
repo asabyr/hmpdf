@@ -165,7 +165,7 @@ fill_background(hmpdf_obj *d)
     d->c->rho_c_0 = 3.0 * gsl_pow_2(SPEEDOFLIGHT) / 8.0 / M_PI / GNEWTON
                     * gsl_pow_2(ba->H0);
     d->c->Om_0 = ba->Omega0_m;
-    printf("Omega_m_0 %.18f\n", d->c->Om_0);
+    //printf("Omega_m_0 %.18f\n", d->c->Om_0);
     d->c->rho_m_0 = d->c->Om_0 * d->c->rho_c_0;
     d->c->Ob_0 = ba->Omega0_b;
     // get background
